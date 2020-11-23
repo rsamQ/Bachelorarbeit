@@ -145,12 +145,10 @@
         ]
     },
     {
-        "status": 
-            {
-               "event": false,
-               "closed": true,
-               "reason":"blub"
-            }
+        "mode": 0
+    },
+    {
+        "info": ""
     }
 ]
     

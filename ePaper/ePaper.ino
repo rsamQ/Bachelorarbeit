@@ -4,6 +4,7 @@
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Arduino.h>
+#include <FS.h>
 
 ESP8266WiFiMulti WiFiMulti;
 
@@ -33,30 +34,50 @@ GxEPD_Class display(io, RST_PIN, BUSY_PIN);
 // WiFi Parameters
 const char* ssid = "Smart-Fridge";
 const char* password = "BusterKeel";
+const char* imageUrl = "http://192.168.0.100:150/serverData/image/";
+const char* jsonUrl = "http://192.168.0.100:150/serverData/schedule/";
+const size_t MAXIMUM_CAPACITY = 3072;
 
 void setup() {
+  
+  //
   Serial.begin(115200);
-  // Serial.setDebugOutput(true);
+  display.init(115200);
 
-  Serial.println();
-  Serial.println();
-  Serial.println();
-
+  //
   for (uint8_t t = 4; t > 0; t--) {
     Serial.printf("[SETUP] WAIT %d...\n", t);
     Serial.flush();
     delay(1000);
   }
 
+  //
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP("Smart-Fridge", "BusterKeel");
 
-  display.init(115200);
+  //
+  if (SPIFFS.begin()) {
+    Serial.println(F("\nSPIFFS mounted"));
+  } else {
+    Serial.println(F("\nFailed to mount SPIFFS"));
+  }
+
+  Serial.println(F("Formating SPIFFS "));
+  if (SPIFFS.format()) {
+    Serial.println(F("done"));
+  } else {
+    Serial.println(F("ERROR"));
+  }
+
+  delay(1000);
+  
   display.eraseDisplay();
-  display.drawPaged(getJsonData);
+  display.drawPaged(loadJsonFromSpiffs);
 }
 
-void getJsonData(){
+
+
+String getJsonData(){
   // Check WiFi Status
   if ((WiFiMulti.run() == WL_CONNECTED)) {
 
@@ -64,7 +85,7 @@ void getJsonData(){
     HTTPClient http;
 
     Serial.print("[HTTP] begin...\n");
-    if (http.begin(client, "http://192.168.0.100:150/sendJson/student/")) {  // HTTP
+    if (http.begin(client, jsonUrl)) {  // HTTP
     
       Serial.print("[HTTP] GET...\n");
       // start connection and send HTTP header
@@ -77,53 +98,110 @@ void getJsonData(){
 
         // file found at server
         if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-          
-          // Parsing
-          const size_t capacity = 6*JSON_ARRAY_SIZE(6) + JSON_OBJECT_SIZE(1) + 35*JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(3) + 490;
-          DynamicJsonDocument doc(capacity);
 
           // Json Payload
           String payload = http.getString();
+          return payload;
 
-          //Deserialize Json payload into DynamicJsonDocument
-          DeserializationError error = deserializeJson(doc, payload);
-
-          //
-          drawJsonData(doc);
-
-          //Error output on failure
-          if(error){
-            Serial.print(F("deserializeJson() failed: "));
-            Serial.println(error.f_str());
-            return;
-          }
         }else {
           Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+          display.setCursor(50, 300);
+          display.print("Error Message: HTTP GET failed");
+          display.update();
         }
         http.end();   //Close connection
       }else {
         Serial.printf("[HTTP} Unable to connect\n");
+        display.setCursor(50, 300);
+        display.print("Error Message: HTTP unable to connect");
+        display.update();
       }     
     }
   }
 }
+
+
+
+void loadJsonFromSpiffs(){
+  Serial.println(F("Loading file"));
+
+  if(!SPIFFS.exists("test.json")){
+    writeJsonToSpiffs();
+  }
   
-//Draw Template from hex array
-void drawTemplate(){
-  display.fillScreen(GxEPD_BLACK);
-  display.drawBitmap(0, 0, imageBitmap, 640, 384, GxEPD_WHITE); 
+  File configFile = SPIFFS.open("test.json", "r");
+
+  DynamicJsonDocument doc(MAXIMUM_CAPACITY);
+  DeserializationError error = deserializeJson(doc, configFile);
+
+  //Error output on failure
+  if(error){
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.f_str());
+    return;
+  }
+
+  drawJsonData(doc);
+
+  Serial.print(F("serializeJson = "));
+  serializeJson(doc, Serial);
+  configFile.close();
 }
+
+
+
+void writeJsonToSpiffs(){
+  Serial.println(F("Saving file"));
+
+  File configFile = SPIFFS.open("test.json", "w");
+
+  if(configFile){
+    Serial.println(F("File opened"));
+
+    DynamicJsonDocument doc(MAXIMUM_CAPACITY);
+    DeserializationError error = deserializeJson(doc, getJsonData());
+
+    //Error output on failure
+    if(error){
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.f_str());
+      return;
+    }
+
+    Serial.println(F("Serializeing to file. Size = "));
+    uint16_t size = serializeJson(doc, configFile);
+    Serial.println(size);
+  }
+  configFile.close();
+}
+
+
 
 //Draw Json Data from Get Request
 void drawJsonData(DynamicJsonDocument doc){
-  
-  JsonObject stat = doc[5];
-  
-  if(stat["status"]["event"] == true){
+
+  JsonObject infoMode = doc[5];
+
+  if(infoMode["mode"] == 0){
+    drawTemplate();
+    display.setTextColor(GxEPD_BLACK);
+    
+    for(int i = 1; i < 6; i++){
+      JsonObject repo0 = doc[i-1];
+      
+      for(int j = 1; j < 7; j++){
+        JsonObject obj = repo0["data"][j-1];        
+        Serial.println(obj["subject"].as<char*>());
+        Serial.println(obj["professor"].as<char*>());
+      }
+    }
+  }
+}
+  /*if(infoMode[5] == 2){
     //display.setCursor();
     //display.println();
     
-  }else if(stat["status"]["closed"] == true){
+  }else if(infoMode[5] == 1){
     
     display.setTextColor(GxEPD_RED);
     display.setFont(&FreeMonoBold12pt7b);
@@ -132,10 +210,10 @@ void drawJsonData(DynamicJsonDocument doc){
     display.setCursor(200, 160);
     display.println("Grund: ");
     display.setCursor(300, 160);
-    display.print(stat["status"]["reason"].as<char*>());
-    Serial.println(stat["status"]["reason"].as<char*>());
+    display.print(infoMode["info"].as<char*>());
+    Serial.println(infoMode["info"].as<char*>());
     
-  }else if(stat["status"]["closed"] == false && stat["status"]["event"] == false){
+  }else if(infoMode[5] == 0){
     
     drawTemplate();
     display.setTextColor(GxEPD_BLACK);
@@ -163,7 +241,13 @@ void drawJsonData(DynamicJsonDocument doc){
         //Serial.println(obj["professor"].as<char*>());
       }           
     }
-  }
+  }*/
+
+
+//Draw Template from hex array
+void drawTemplate(){
+  display.fillScreen(GxEPD_BLACK);
+  display.drawBitmap(0, 0, imageBitmap, 640, 384, GxEPD_WHITE); 
 }
           
           
