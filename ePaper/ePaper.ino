@@ -1,19 +1,19 @@
+// Arduino library headers
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <WiFiClient.h>
 #include <ESP8266HTTPClient.h>
+
+// ArduinoJson library headers
 #include <ArduinoJson.h>
 #include <Arduino.h>
+
+// Spiffs library header
 #include <FS.h>
 
-ESP8266WiFiMulti WiFiMulti;
-
-#include <GxEPD.h>
-#include <GxIO/GxIO_SPI/GxIO_SPI.h>
-#include <GxIO/GxIO.h>  
-
-//specific library for the e-Paper 7.5" colors black/white/red
-#include <GxGDEW075Z09/GxGDEW075Z09.h>
+// Adafruit library headers
+#include <Adafruit_GFX.h>
+#include <gfxfont.h>
 
 // library for fonts
 #include <Fonts/FreeMonoBold12pt7b.h>
@@ -21,16 +21,16 @@ ESP8266WiFiMulti WiFiMulti;
 // include templates
 #include "new_template.h"
 
-//definition of SPI pins
-#define CS_PIN           15 // D8
-#define RST_PIN          5  // D1
-#define DC_PIN           4  // D2
-#define BUSY_PIN         16 // D0
+// 
+#include <GxEPD2.h>
+#include <GxEPD2_3C.h>
 
-GxIO_Class io(SPI, CS_PIN, DC_PIN, RST_PIN);
-GxEPD_Class display(io, RST_PIN, BUSY_PIN);
+//
+GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT / 4> display(GxEPD2_750c(/*CS=15*/ 15, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
+
 
 // WiFi Parameters
+ESP8266WiFiMulti WiFiMulti;
 const char* ssid = "Smart-Fridge";
 const char* password = "BusterKeel";
 const char* imageUrl = "http://192.168.0.100:150/serverData/image/";
@@ -63,10 +63,13 @@ void setup() {
 
   delay(1000);
   
-  display.eraseDisplay();
-  display.drawPaged(getJsonData);
+  display.refresh();
+  display.drawPaged(drawData, 0);
 }
 
+void drawData(const void*){
+  getJsonData();
+}
 
 void getJsonData(){
   // Check WiFi Status
@@ -100,14 +103,14 @@ void getJsonData(){
           Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
           display.setCursor(50, 300);
           display.print(F("Error Message: HTTP GET failed"));
-          display.update();
+          display.refresh();
         }
         http.end();   //Close connection
       }else {
         Serial.printf("[HTTP} Unable to connect\n");
         display.setCursor(50, 300);
         display.print(F("Error Message: HTTP unable to connect"));
-        display.update();
+        display.refresh();
       }     
     }
   }
