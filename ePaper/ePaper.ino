@@ -35,7 +35,9 @@ const char* ssid = "Smart-Fridge";
 const char* password = "BusterKeel";
 const char* imageUrl = "http://192.168.0.100:150/serverData/image/";
 const char* jsonUrl = "http://192.168.0.100:150/serverData/schedule/";
-const size_t MAXIMUM_CAPACITY = 3072;
+const size_t MAXIMUM_CAPACITY = 4096;
+
+String saveData = "";
 
 void setup() {
   
@@ -62,14 +64,15 @@ void setup() {
   }
 
   delay(1000);
-  
-  display.refresh();
-  display.drawPaged(drawData, 0);
+  getJsonData();
+  writeJsonToSpiffs();  
 }
 
+
 void drawData(const void*){
-  getJsonData();
+  drawJsonData();
 }
+
 
 void getJsonData(){
   // Check WiFi Status
@@ -94,10 +97,7 @@ void getJsonData(){
         if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
 
           // Json Payload
-          String payload = http.getString();
-
-          writeJsonToSpiffs(payload);
-          loadJsonFromSpiffs();
+          saveData = http.getString();
 
         }else {
           Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
@@ -117,7 +117,7 @@ void getJsonData(){
 }
 
 
-void loadJsonFromSpiffs(){
+DynamicJsonDocument loadJsonFromSpiffs(){
   Serial.println(F("Loading file"));
 
   File configFile = SPIFFS.open("test.json", "r");
@@ -131,67 +131,71 @@ void loadJsonFromSpiffs(){
     if(error){
       Serial.print(F("deserializeJson() failed: "));
       Serial.println(error.f_str());
-      return;
     }
-    drawJsonData(doc);
+    return doc;
   }else{
     Serial.println(F("Failed to open config file"));
+    /*writeJsonToSpiffs();
+    loadJsonFromSpiffs();*/
   }
   configFile.close();
 }
 
 
-
-void writeJsonToSpiffs(String payload){
+void writeJsonToSpiffs(){
   Serial.println(F("Saving file"));
 
   File configFile = SPIFFS.open("test.json", "w");
-
+  
   if(configFile){
     Serial.println(F("File opened"));
-
-    DynamicJsonDocument doc(MAXIMUM_CAPACITY);
-    DeserializationError error = deserializeJson(doc, payload);
-
-    //Error output on failure
-    if(error){
-      Serial.print(F("deserializeJson() failed: "));
-      Serial.println(error.f_str());
-      return;
-    }
-
-    Serial.println(F("Serializeing to file. Size = "));
-    uint16_t size = serializeJson(doc, configFile);
-    Serial.println(size);
+    Serial.println(F("Write file"));
+    Serial.println(saveData);
+    configFile.print(saveData);
   }else{
     Serial.println(F("Failed to open file!"));
   }
+  Serial.println(F("Closing file"));
   configFile.close();
 }
 
 
-
 //Draw Json Data from Get Request
-void drawJsonData(DynamicJsonDocument doc){
+void drawJsonData(){
 
-  JsonObject infoMode = doc[5];
+  File configFile = SPIFFS.open("test.json", "r");
+
+  DynamicJsonDocument doc1(MAXIMUM_CAPACITY);
+  deserializeJson(doc1, configFile);
+
+  DynamicJsonDocument doc2(MAXIMUM_CAPACITY);
+  deserializeJson(doc2, saveData);
+
+  JsonObject infoMode = doc2[6];
+  Serial.println(infoMode["mode"].as<int>());
 
   if(infoMode["mode"] == 0){
     drawTemplate();
-    display.setTextColor(GxEPD_BLACK);
     
-    for(int i = 1; i < 6; i++){
-      JsonObject repo0 = doc[i-1].as<JsonObject>();
+    for(int i = 1; i <= 6; i++){
+      JsonObject repo0 = doc1[i-1].as<JsonObject>();
+      JsonObject repo1 = doc2[i-1].as<JsonObject>();
       
       for(int j = 1; j < 7; j++){
-        //JsonObject obj = repo0["data"][j-1];  
-        display.setCursor((110*i), (j*50));
-        display.println(repo0["data"][j-1]["subject"].as<char*>());    
-        Serial.println(repo0["data"][j-1]["subject"].as<char*>());
-        Serial.println(repo0["data"][j-1]["professor"].as<char*>());
+        if(repo1["data"][j-1]["subject"] != repo0["data"][j-1]["subject"] || repo1["data"][j-1]["hour"] != repo0["data"][j-1]["hour"] ||
+        repo1["data"][j-1]["professor"] != repo0["data"][j-1]["professor"] || repo1["data"][j-1]["minute"] != repo0["data"][j-1]["minute"]){
+          display.setTextColor(GxEPD_RED);
+          display.setCursor((110*i), (j*50));
+          display.println(repo1["data"][j-1]["subject"].as<char*>());
+        }else{
+          display.setTextColor(GxEPD_BLACK);
+          display.setCursor((110*i), (j*50));
+          display.println(repo1["data"][j-1]["subject"].as<char*>());     
+        }
       }
     }
   }
+  configFile.close();
 }
 
 
@@ -203,7 +207,9 @@ void drawTemplate(){
 
 
 void loop() {
-  /*display.eraseDisplay();
-  display.drawPaged(getJsonData);
-  delay(1000*60);*/
+  getJsonData();
+  display.refresh();
+  display.drawPaged(drawData, 0);
+  writeJsonToSpiffs();
+  delay(1000*20);
  };
