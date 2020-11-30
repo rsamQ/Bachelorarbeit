@@ -1,60 +1,78 @@
+// Arduino library headers
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <WiFiClient.h>
 #include <ESP8266HTTPClient.h>
+
+// ArduinoJson library headers
 #include <ArduinoJson.h>
 #include <Arduino.h>
 
-ESP8266WiFiMulti WiFiMulti;
+// Spiffs library header
+#include <FS.h>
 
-#include <GxEPD.h>
-#include <GxIO/GxIO_SPI/GxIO_SPI.h>
-#include <GxIO/GxIO.h>  
-
-//specific library for the e-Paper 7.5" colors black/white/red
-#include <GxGDEW075Z09/GxGDEW075Z09.h>
+// Adafruit library headers
+#include <Adafruit_GFX.h>
+#include <gfxfont.h>
 
 // library for fonts
 #include <Fonts/FreeMonoBold12pt7b.h>
 
 // include templates
-#include "template.h"
 #include "new_template.h"
 
-//definition of SPI pins
-#define CS_PIN           15 // D8
-#define RST_PIN          5  // D1
-#define DC_PIN           4  // D2
-#define BUSY_PIN         16 // D0
+// 
+#include <GxEPD2.h>
+#include <GxEPD2_3C.h>
 
-GxIO_Class io(SPI, CS_PIN, DC_PIN, RST_PIN);
-GxEPD_Class display(io, RST_PIN, BUSY_PIN);
+//
+GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT / 4> display(GxEPD2_750c(/*CS=15*/ 15, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
+
 
 // WiFi Parameters
+ESP8266WiFiMulti WiFiMulti;
 const char* ssid = "Smart-Fridge";
 const char* password = "BusterKeel";
+const char* imageUrl = "http://192.168.0.100:150/serverData/image/";
+const char* jsonUrl = "http://192.168.0.100:150/serverData/schedule/";
+const size_t MAXIMUM_CAPACITY = 4096;
+
+String saveData = "";
 
 void setup() {
+  
+  //
   Serial.begin(115200);
-  // Serial.setDebugOutput(true);
+  display.init(115200);
 
-  Serial.println();
-  Serial.println();
-  Serial.println();
-
-  for (uint8_t t = 4; t > 0; t--) {
-    Serial.printf("[SETUP] WAIT %d...\n", t);
-    Serial.flush();
-    delay(1000);
-  }
-
+  //
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP("Smart-Fridge", "BusterKeel");
 
-  display.init(115200);
-  display.eraseDisplay();
-  display.drawPaged(getJsonData);
+  //
+  if (SPIFFS.begin()) {
+    Serial.println(F("\nSPIFFS mounted"));
+  } else {
+    Serial.println(F("\nFailed to mount SPIFFS"));
+  }
+
+  Serial.println(F("Formating SPIFFS "));
+  if (SPIFFS.format()) {
+    Serial.println(F("done"));
+  } else {
+    Serial.println(F("ERROR"));
+  }
+
+  delay(1000);
+  getJsonData();
+  writeJsonToSpiffs();  
 }
+
+
+void drawData(const void*){
+  drawJsonData();
+}
+
 
 void getJsonData(){
   // Check WiFi Status
@@ -63,10 +81,10 @@ void getJsonData(){
     WiFiClient client;
     HTTPClient http;
 
-    Serial.print("[HTTP] begin...\n");
-    if (http.begin(client, "http://192.168.0.100:150/sendJson/student/")) {  // HTTP
+    Serial.print(F("[HTTP] begin...\n"));
+    if (http.begin(client, jsonUrl)) {  // HTTP
     
-      Serial.print("[HTTP] GET...\n");
+      Serial.print(F("[HTTP] GET...\n"));
       // start connection and send HTTP header
       int httpCode = http.GET();
 
@@ -77,100 +95,121 @@ void getJsonData(){
 
         // file found at server
         if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-          
-          // Parsing
-          const size_t capacity = 6*JSON_ARRAY_SIZE(6) + JSON_OBJECT_SIZE(1) + 35*JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(3) + 490;
-          DynamicJsonDocument doc(capacity);
 
           // Json Payload
-          String payload = http.getString();
+          saveData = http.getString();
 
-          //Deserialize Json payload into DynamicJsonDocument
-          DeserializationError error = deserializeJson(doc, payload);
-
-          //
-          drawJsonData(doc);
-
-          //Error output on failure
-          if(error){
-            Serial.print(F("deserializeJson() failed: "));
-            Serial.println(error.f_str());
-            return;
-          }
         }else {
           Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+          display.setCursor(50, 300);
+          display.print(F("Error Message: HTTP GET failed"));
+          display.refresh();
         }
         http.end();   //Close connection
       }else {
         Serial.printf("[HTTP} Unable to connect\n");
+        display.setCursor(50, 300);
+        display.print(F("Error Message: HTTP unable to connect"));
+        display.refresh();
       }     
     }
   }
 }
+
+
+DynamicJsonDocument loadJsonFromSpiffs(){
+  Serial.println(F("Loading file"));
+
+  File configFile = SPIFFS.open("test.json", "r");
+
+  if(configFile){
+    
+    DynamicJsonDocument doc(MAXIMUM_CAPACITY);
+    DeserializationError error = deserializeJson(doc, configFile);
+
+    //Error output on failure
+    if(error){
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.f_str());
+    }
+    return doc;
+  }else{
+    Serial.println(F("Failed to open config file"));
+    /*writeJsonToSpiffs();
+    loadJsonFromSpiffs();*/
+  }
+  configFile.close();
+}
+
+
+void writeJsonToSpiffs(){
+  Serial.println(F("Saving file"));
+
+  File configFile = SPIFFS.open("test.json", "w");
   
+  if(configFile){
+    Serial.println(F("File opened"));
+    Serial.println(F("Write file"));
+    Serial.println(saveData);
+    configFile.print(saveData);
+  }else{
+    Serial.println(F("Failed to open file!"));
+  }
+  Serial.println(F("Closing file"));
+  configFile.close();
+}
+
+
+//Draw Json Data from Get Request
+void drawJsonData(){
+
+  File configFile = SPIFFS.open("test.json", "r");
+
+  DynamicJsonDocument doc1(MAXIMUM_CAPACITY);
+  deserializeJson(doc1, configFile);
+
+  DynamicJsonDocument doc2(MAXIMUM_CAPACITY);
+  deserializeJson(doc2, saveData);
+
+  JsonObject infoMode = doc2[6];
+  Serial.println(infoMode["mode"].as<int>());
+
+  if(infoMode["mode"] == 0){
+    drawTemplate();
+    
+    for(int i = 1; i <= 6; i++){
+      JsonObject repo0 = doc1[i-1].as<JsonObject>();
+      JsonObject repo1 = doc2[i-1].as<JsonObject>();
+      
+      for(int j = 1; j < 7; j++){
+        if(repo1["data"][j-1]["subject"] != repo0["data"][j-1]["subject"] || repo1["data"][j-1]["hour"] != repo0["data"][j-1]["hour"] ||
+        repo1["data"][j-1]["professor"] != repo0["data"][j-1]["professor"] || repo1["data"][j-1]["minute"] != repo0["data"][j-1]["minute"]){
+          display.setTextColor(GxEPD_RED);
+          display.setCursor((110*i), (j*50));
+          display.println(repo1["data"][j-1]["subject"].as<char*>());
+        }else{
+          display.setTextColor(GxEPD_BLACK);
+          display.setCursor((110*i), (j*50));
+          display.println(repo1["data"][j-1]["subject"].as<char*>());     
+        }
+      }
+    }
+  }
+  configFile.close();
+}
+
+
 //Draw Template from hex array
 void drawTemplate(){
   display.fillScreen(GxEPD_BLACK);
   display.drawBitmap(0, 0, imageBitmap, 640, 384, GxEPD_WHITE); 
-}
-
-//Draw Json Data from Get Request
-void drawJsonData(DynamicJsonDocument doc){
-  
-  JsonObject stat = doc[5];
-  
-  if(stat["status"]["event"] == true){
-    //display.setCursor();
-    //display.println();
-    
-  }else if(stat["status"]["closed"] == true){
-    
-    display.setTextColor(GxEPD_RED);
-    display.setFont(&FreeMonoBold12pt7b);
-    display.setCursor(200, 130);
-    display.println("Im Moment geschlossen!");
-    display.setCursor(200, 160);
-    display.println("Grund: ");
-    display.setCursor(300, 160);
-    display.print(stat["status"]["reason"].as<char*>());
-    Serial.println(stat["status"]["reason"].as<char*>());
-    
-  }else if(stat["status"]["closed"] == false && stat["status"]["event"] == false){
-    
-    drawTemplate();
-    display.setTextColor(GxEPD_BLACK);
-    
-    for(int i = 1; i < 6; i++){
-      JsonObject repo0 = doc[i-1];
-      
-      for(int j = 1; j < 7; j++){
-        JsonObject obj = repo0["data"][j-1];        
-        display.setCursor(110 * i, (j * 50));
-        
-        if(j > 3){
-          display.setCursor(110 * i, (j * 50) + 50);
-        }
-        display.println(obj["subject"].as<char*>());
-
-        
-        display.setCursor(110 * i, 10 + (j * 50));
-        if(j > 3){
-          display.setCursor(110 * i, (j * 50) + 60);
-        }
-        display.println(obj["professor"].as<char*>());
-        
-        //Serial.println(obj["subject"].as<char*>());
-        //Serial.println(obj["professor"].as<char*>());
-      }           
-    }
-  }
-}
-          
-          
+}      
 
 
 void loop() {
-  /*display.eraseDisplay();
-  display.drawPaged(getJsonData);
-  delay(1000*60);*/
+  getJsonData();
+  display.refresh();
+  display.drawPaged(drawData, 0);
+  writeJsonToSpiffs();
+  delay(1000*20);
  };
