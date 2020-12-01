@@ -163,6 +163,13 @@ void writeJsonToSpiffs(){
 //Draw Json Data from Get Request
 void drawJsonData(){
 
+  int16_t days = 6;
+  int16_t offsetLeft = 94;
+  int16_t offsetTop = 46;
+  int16_t duration = 15;
+  int16_t heightPerDuration = 7;
+  int16_t startingHour = 8;
+
   File configFile = SPIFFS.open("test.json", "r");
 
   DynamicJsonDocument doc1(MAXIMUM_CAPACITY);
@@ -172,7 +179,6 @@ void drawJsonData(){
   deserializeJson(doc2, saveData);
 
   JsonObject infoMode = doc2[6];
-  Serial.println(infoMode["mode"].as<int>());
 
   if(infoMode["mode"] == 0){
     drawTemplate();
@@ -182,15 +188,32 @@ void drawJsonData(){
       JsonObject repo1 = doc2[i-1].as<JsonObject>();
       
       for(int j = 1; j < 7; j++){
+
+        int16_t hour = repo1["data"][j-1]["hour"].as<int>();
+        int16_t minutes = repo1["data"][j-1]["minutes"].as<int>();
+        int16_t x = offsetLeft + (i-1) * ((display.width() - offsetLeft) / days);
+        int16_t y = offsetTop + ((hour - startingHour) * (4 * heightPerDuration) + (minutes / duration) * heightPerDuration);
+        int16_t w = ((display.width() - offsetLeft) / days) - 8;
+        int16_t h = ((repo1["data"][j-1]["duration"].as<int>() / duration) * heightPerDuration);
+        
         if(repo1["data"][j-1]["subject"] != repo0["data"][j-1]["subject"] || repo1["data"][j-1]["hour"] != repo0["data"][j-1]["hour"] ||
         repo1["data"][j-1]["professor"] != repo0["data"][j-1]["professor"] || repo1["data"][j-1]["minute"] != repo0["data"][j-1]["minute"]){
+          
+          display.drawRect(x, y, w, h, GxEPD_RED);
           display.setTextColor(GxEPD_RED);
-          display.setCursor((110*i), (j*50));
+          display.setCursor(x + 5, y + 5);
           display.println(repo1["data"][j-1]["subject"].as<char*>());
+          display.setCursor(x + 5, y + 15);
+          display.println(repo1["data"][j-1]["professor"].as<char*>());
+          
         }else{
+          
+          display.drawRect(x, y, w, h, GxEPD_BLACK);
           display.setTextColor(GxEPD_BLACK);
-          display.setCursor((110*i), (j*50));
-          display.println(repo1["data"][j-1]["subject"].as<char*>());     
+          display.setCursor(x + 5, y + 5);
+          display.println(repo1["data"][j-1]["subject"].as<char*>());
+          display.setCursor(x + 5, y + 15);
+          display.println(repo1["data"][j-1]["professor"].as<char*>());    
         }
       }
     }
