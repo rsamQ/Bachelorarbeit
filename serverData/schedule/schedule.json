@@ -3,27 +3,17 @@
         "day": 0,
         "data":[
             {
-                "subject":"english1",
+                "hour":8,
+                "minutes":0,
+                "duration":45,
+                "subject":"one1",
                 "professor":"Lano"
             },
             {
-                "subject":"german1",
-                "professor":"Lano"
-            },
-            {
-                "subject":"informatik1",
-                "professor":"Lano"
-            },
-            {
-                "subject":"marketing1",
-                "professor":"Lano"
-            },
-            {
-                "subject":"",
-                "professor":""
-            },
-            {
-                "subject":"programming1",
+                "hour":9,
+                "minutes":0,
+                "duration":90,
+                "subject":"one2",
                 "professor":"Lano"
             }
         ]
@@ -32,27 +22,17 @@
         "day": 1,
         "data":[
             {
-                "subject":"english2",
+                "hour":11,
+                "minutes":30,
+                "duration":90,
+                "subject":"two1",
                 "professor":"Lano"
             },
             {
-                "subject":"german2",
-                "professor":"Lano"
-            },
-            {
-                "subject":"informatik2",
-                "professor":"Lano"
-            },
-            {
-                "subject":"marketing2",
-                "professor":"Lano"
-            },
-            {
-                "subject":"",
-                "professor":""
-            },
-            {
-                "subject":"programming2",
+                "hour":14,
+                "minutes":0,
+                "duration":90,
+                "subject":"two2",
                 "professor":"Lano"
             }
         ]
@@ -61,27 +41,17 @@
         "day": 2,
         "data":[
             {
-                "subject":"english3",
+                "hour":9,
+                "minutes":0,
+                "duration":90,
+                "subject":"three1",
                 "professor":"Lano"
             },
             {
-                "subject":"german3",
-                "professor":"Lano"
-            },
-            {
-                "subject":"informatik3",
-                "professor":"Lano"
-            },
-            {
-                "subject":"marketing3",
-                "professor":"Lano"
-            },
-            {
-                "subject":"",
-                "professor":""
-            },
-            {
-                "subject":"programming3",
+                "hour":11,
+                "minutes":30,
+                "duration":90,
+                "subject":"three2",
                 "professor":"Lano"
             }
         ]
@@ -90,27 +60,10 @@
         "day": 3,
         "data":[
             {
-                "subject":"english4",
-                "professor":"Lano"
-            },
-            {
-                "subject":"german4",
-                "professor":"Lano"
-            },
-            {
-                "subject":"informatik4",
-                "professor":"Lano"
-            },
-            {
-                "subject":"marketing4",
-                "professor":"Lano"
-            },
-            {
-                "subject":"",
-                "professor":""
-            },
-            {
-                "subject":"programming4",
+                "hour":14,
+                "minutes":0,
+                "duration":90,
+                "subject":"four1",
                 "professor":"Lano"
             }
         ]
@@ -119,33 +72,45 @@
         "day": 4,
         "data":[
             {
-                "subject":"english5",
+                "hour":8,
+                "minutes":0,
+                "duration":90,
+                "subject":"five1",
                 "professor":"Lano"
             },
             {
-                "subject":"german5",
+                "hour":9,
+                "minutes":45,
+                "duration":90,
+                "subject":"five2",
+                "professor":"Lano"
+            }
+        ]
+    },
+    {
+        "day": 5,
+        "data":[
+            {
+                "hour":8,
+                "minutes":0,
+                "duration":90,
+                "subject":"six1",
                 "professor":"Lano"
             },
             {
-                "subject":"informatik5",
-                "professor":"Lano"
-            },
-            {
-                "subject":"marketing5",
-                "professor":"Lano"
-            },
-            {
-                "subject":"",
-                "professor":""
-            },
-            {
-                "subject":"programming5",
+                "hour":9,
+                "minutes":45,
+                "duration":90,
+                "subject":"six2",
                 "professor":"Lano"
             }
         ]
     },
     {
         "mode": 0
+    },
+    {
+        "room": "BB.210"
     },
     {
         "info": ""
