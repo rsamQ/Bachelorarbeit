@@ -25,7 +25,7 @@
 #include <GxEPD2.h>
 #include <GxEPD2_3C.h>
 
-//
+// define spi pins
 GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT / 4> display(GxEPD2_750c(/*CS=15*/ 15, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
 
 
@@ -41,11 +41,16 @@ const char * headerKeys[] = {"date", "server"} ;
 const size_t numberOfHeaders = 2;
 
 //
-String saveData = "";
+String tempJson = "";
 String updateTime = "";
+
+bool connectionError = false;
+String errorMsg = "";
 
 //
 const size_t MAXIMUM_CAPACITY = 4096;
+
+
 
 
 void setup() {
@@ -74,18 +79,28 @@ void setup() {
     Serial.println(F("ERROR"));
   }
 
-  delay(1000);
-  getJsonData();
-  writeJsonToSpiffs();  
+  delay(1000); 
 }
+
+
 
 
 void drawData(const void*){
-  drawJsonData();
+  compareAndDrawJsonData();
 }
 
 
-void getJsonData(){
+
+
+void drawTempData(const void*){
+  drawJsonDataFromMemory();
+}
+
+
+
+
+void getJsonDataFrom_HTTP(const char* url){
+  
   // Check WiFi Status
   if ((WiFiMulti.run() == WL_CONNECTED)) {
 
@@ -93,7 +108,7 @@ void getJsonData(){
     HTTPClient http;
 
     Serial.print(F("[HTTP] begin...\n"));
-    if (http.begin(client, jsonUrl)) {  // HTTP
+    if (http.begin(client, url)) {  // HTTP
 
       //
       http.collectHeaders(headerKeys, numberOfHeaders);
@@ -113,18 +128,21 @@ void getJsonData(){
         if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
 
           // Json Payload
-          saveData = http.getString();  //
+          tempJson = http.getString();
           
           // Response Header time
-          updateTime = http.header("date"); //
+          updateTime = http.header("date");
+
+          connectionError = false;
 
         }else {
           
-          //
+          // 
+          updateTime = http.header("date");
+          connectionError = true;
+          errorMsg = "Error: ";
+          errorMsg += http.errorToString(httpCode).c_str();
           Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
-          display.setCursor(50, 300);
-          display.print(F("Error Message: HTTP GET failed"));
-          display.refresh();
         }
         
         http.end();   //Close connection
@@ -132,17 +150,20 @@ void getJsonData(){
       }else {
         
         //
-        Serial.printf("[HTTP} Unable to connect\n");
-        display.setCursor(50, 300);
-        display.print(F("Error Message: HTTP unable to connect"));
-        display.refresh();
+        connectionError = true;
+        errorMsg = "Error: HTTP unable to connect";
+        Serial.printf("[HTTP] Unable to connect\n");
       }     
     }
+  }else{
+    
   }
 }
 
 
-void writeJsonToSpiffs(){
+
+
+void writeJsonTo_SPIFFS(){
   
   Serial.println(F("Saving file"));
 
@@ -152,8 +173,8 @@ void writeJsonToSpiffs(){
     
     Serial.println(F("File opened"));
     Serial.println(F("Write file"));
-    Serial.println(saveData);
-    configFile.print(saveData); //
+    Serial.println(tempJson);
+    configFile.print(tempJson); //
   }else{
     Serial.println(F("Failed to open file!"));
   }
@@ -164,8 +185,10 @@ void writeJsonToSpiffs(){
 }
 
 
+
+
 //Draw Json Data from Get Request
-void drawJsonData(){
+void drawJsonDataFromMemory(){
 
   //
   int16_t days = 6;
@@ -182,8 +205,83 @@ void drawJsonData(){
   deserializeJson(doc1, configFile);
 
   //
+  JsonObject infoMode = doc1[6];
+  JsonObject room = doc1[7];
+
+  if(infoMode["mode"] == 0){
+    drawTemplate();
+
+    //
+    display.setTextColor(GxEPD_BLACK);
+    //display.setFont();
+    display.setCursor(15, 15);
+    display.println(room["room"].as<char*>());  //
+    display.setCursor(15, 364);
+    display.println("Last Update: " + updateTime);  // 
+
+    for(int i = 1; i <= 6; i++){
+      JsonObject repo0 = doc1[i-1].as<JsonObject>();  //
+    
+      for(int j = 1; j < 7; j++){
+
+        int16_t hour = repo0["data"][j-1]["hour"].as<int>();  //
+        int16_t minutes = repo0["data"][j-1]["minutes"].as<int>(); //
+        int16_t x = offsetLeft + (i-1) * ((display.width() - offsetLeft) / days); //
+        int16_t y = offsetTop + ((hour - startingHour) * (4 * heightPerDuration) + (minutes / duration) * heightPerDuration); //
+        int16_t w = ((display.width() - offsetLeft) / days) - 8;  //
+        int16_t h = ((repo0["data"][j-1]["duration"].as<int>() / duration) * heightPerDuration);  //
+          
+        display.drawRect(x, y, w, h, GxEPD_BLACK); //
+        display.setTextColor(GxEPD_BLACK);
+        display.setCursor(x + 5, y + 5);  //
+        display.println(repo0["data"][j-1]["subject"].as<char*>());
+        display.setCursor(x + 5, y + 15); //
+        display.println(repo0["data"][j-1]["professor"].as<char*>());
+        
+        if(connectionError == true){
+          display.setTextColor(GxEPD_RED);
+          display.setCursor(335, 364);
+          display.println(errorMsg);  // 
+        }
+      }
+    }
+  }else if(infoMode["mode"] == 1){
+    
+  }else if(infoMode["mode"] == 2){
+    
+  }
+  configFile.close();
+}
+
+
+
+
+//Draw Json Data from Get Request
+void compareAndDrawJsonData(){
+
+  //
+  int16_t days = 6;
+  int16_t offsetLeft = 94;
+  int16_t offsetTop = 46;
+  int16_t duration = 15;
+  int16_t heightPerDuration = 7;
+  int16_t startingHour = 8;
+
+  File configFile = SPIFFS.open("test.json", "r");  //
+
+  if(!configFile){
+    configFile.close();
+    writeJsonTo_SPIFFS();
+    configFile = SPIFFS.open("test.json", "r");  //
+  }
+
+  //
+  DynamicJsonDocument doc1(MAXIMUM_CAPACITY);
+  deserializeJson(doc1, configFile);
+
+  //
   DynamicJsonDocument doc2(MAXIMUM_CAPACITY);
-  deserializeJson(doc2, saveData);
+  deserializeJson(doc2, tempJson);
 
   //
   JsonObject infoMode = doc2[6];
@@ -199,8 +297,6 @@ void drawJsonData(){
     display.println(room["room"].as<char*>());  //
     display.setCursor(15, 364);
     display.println("Last Update: " + updateTime);  //
-    /*display.setCursor(335, 364);
-    display.println("Error Message: ");*/
     
     
     for(int i = 1; i <= 6; i++){
@@ -243,6 +339,8 @@ void drawJsonData(){
 }
 
 
+
+
 //Draw Template from hex array
 void drawTemplate(){
   display.fillScreen(GxEPD_BLACK);
@@ -250,10 +348,18 @@ void drawTemplate(){
 }      
 
 
+
+
 void loop() {
-  getJsonData();
-  display.refresh();
-  display.drawPaged(drawData, 0);
-  writeJsonToSpiffs();
+  getJsonDataFrom_HTTP(jsonUrl);
+  
+  if(connectionError == true){
+    display.refresh();
+    display.drawPaged(drawTempData, 0);
+  }else{
+    display.refresh();
+    display.drawPaged(drawData, 0);
+    writeJsonTo_SPIFFS();
+  }
   delay(1000*60);
  };
