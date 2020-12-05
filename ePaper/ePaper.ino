@@ -1,28 +1,28 @@
-// Arduino library headers
+// Arduino libraries
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <WiFiClient.h>
 #include <ESP8266HTTPClient.h>
 
-// ArduinoJson library headers
+// ArduinoJson libraries
 #include <ArduinoJson.h>
 #include <Arduino.h>
 
-// Spiffs library header
+// Spiffs library
 #include <FS.h>
 
-// Adafruit library headers
+// Adafruit libraries
 #include <Adafruit_GFX.h>
 #include <gfxfont.h>
 
-// library for fonts
+// fonts
 #include <Fonts/FreeMonoBold12pt7b.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
 
-// include templates
+// include template
 #include "new_template.h"
 
-// 
+// diplay libraries
 #include <GxEPD2.h>
 #include <GxEPD2_3C.h>
 
@@ -37,22 +37,22 @@ const char* password = "BusterKeel";
 const char* imageUrl = "http://192.168.0.100:150/serverData/image/image.bmp";
 const char* jsonUrl = "http://192.168.0.100:150/serverData/schedule/";
 
-//
+// Response Header Parameters
 const char * headerKeys[] = {"date", "server"} ;
 const size_t numberOfHeaders = 2;
 
-//
+// Variables for temporary data
 String tempJson = "";
 String updateTime = "";
 
-//
+// Variable for determine data content
 bool receiveImage = false;
 
-//
+// Variables for error determination and output
 bool connectionError = false;
 String errorMsg = "";
 
-//
+// Max content size for json document
 const size_t MAXIMUM_CAPACITY = 4096;
 
 
@@ -60,15 +60,15 @@ const size_t MAXIMUM_CAPACITY = 4096;
 
 void setup() {
   
-  //
+  // Initialize serial and e-paper monitor output
   Serial.begin(115200);
   display.init(115200);
 
-  //
+  // Activate WIFI
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP("Smart-Fridge", "BusterKeel");
 
-  //
+  // Activate SPIFFS
   if (SPIFFS.begin()) {
     Serial.println(F("\nSPIFFS mounted"));
   } else {
@@ -77,19 +77,19 @@ void setup() {
 
   Serial.println(F("Formating SPIFFS "));
 
-  //
+  // Mount SPIFFS
   if (SPIFFS.format()) {
     Serial.println(F("done"));
   } else {
     Serial.println(F("ERROR"));
   }
-
-  delay(1000); 
 }
 
 
 
 
+// Callback function for comparing 
+// data from SPIFFS and GET request.
 void drawData(const void*){
   compareAndDrawJsonData();
 }
@@ -97,6 +97,8 @@ void drawData(const void*){
 
 
 
+// Callback function for drawing Data
+// from SPIFFS.
 void drawTempData(const void*){
   drawJsonDataFromMemory();
 }
@@ -104,6 +106,8 @@ void drawTempData(const void*){
 
 
 
+// Receive Json Data from Server per 
+// GET request.
 void getJsonDataFrom_HTTP(const char* url){
   
   // Check WiFi Status
@@ -115,7 +119,7 @@ void getJsonDataFrom_HTTP(const char* url){
     Serial.print(F("[HTTP] begin...\n"));
     if (http.begin(client, url)) {  // HTTP
 
-      //
+      // receive initialzed response header data
       http.collectHeaders(headerKeys, numberOfHeaders);
     
       Serial.print(F("[HTTP] GET...\n"));
@@ -138,14 +142,13 @@ void getJsonDataFrom_HTTP(const char* url){
           // Response Header time
           updateTime = http.header("date");
 
-          //
           connectionError = false;
 
         }else {
           
-          // 
-          updateTime = http.header("date");
+          // Draw error code SERVER and time onto the display
           connectionError = true;
+          updateTime = http.header("date");
           errorMsg = (F("Error: "));
           errorMsg += http.errorToString(httpCode).c_str();
           Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
@@ -154,14 +157,14 @@ void getJsonDataFrom_HTTP(const char* url){
         http.end();   //Close connection
         
       }else {
-        
-        //
+        // Draw error code SERVER
         connectionError = true;
         errorMsg = (F("Error: HTTP unable to connect"));
         Serial.printf("[HTTP] Unable to connect\n");
       }     
     }
   }else{
+    // Draw error code WIFI
     connectionError = true;
     errorMsg = (F("Error: Unable to connect to WiFi"));
     Serial.printf("Unable to connect to WiFi\n");
@@ -243,34 +246,37 @@ void getJsonDataFrom_HTTP(const char* url){
 
 
 
+// Write json payload(string) to SPIFFS
 void writeJsonTo_SPIFFS(){
   
   Serial.println(F("Saving file"));
 
-  File storedData = SPIFFS.open("test.json", "w"); //
+  File storedData = SPIFFS.open("test.json", "w"); // open file
   
-  if(storedData){
+  if(storedData){ // check if file exists
     
     Serial.println(F("File opened"));
     Serial.println(F("Write file"));
-    Serial.println(tempJson);
-    storedData.print(tempJson); //
+    //Serial.println(tempJson);
+    storedData.print(tempJson); // write file
   }else{
     Serial.println(F("Failed to open file!"));
   }
   
   Serial.println(F("Closing file"));
   
-  storedData.close(); //
+  storedData.close(); // close file
 }
 
 
 
 
-//Draw Json Data from Get Request
+
+// Draw json Data from SPIFFS
+// on to the display
 void drawJsonDataFromMemory(){
 
-  //
+  // Variables for displaying data on display
   int16_t days = 6;
   int16_t offsetLeft = 94;
   int16_t offsetTop = 46;
@@ -278,9 +284,9 @@ void drawJsonDataFromMemory(){
   int16_t heightPerDuration = 7;
   int16_t startingHour = 8;
 
-  File storedData = SPIFFS.open("test.json", "r");  //
+  File storedData = SPIFFS.open("test.json", "r");  // open file
 
-  //
+  // 
   DynamicJsonDocument storedDoc(MAXIMUM_CAPACITY);
   deserializeJson(storedDoc, storedData);
 
@@ -350,7 +356,7 @@ void drawJsonDataFromMemory(){
 
 
 
-//Draw Json Data from Get Request
+//Draw json data from Get Request
 void compareAndDrawJsonData(){
 
   //
@@ -466,6 +472,7 @@ void drawTemplate(){
 
 
 
+//
 void loop() {
   getJsonDataFrom_HTTP(jsonUrl);
   
@@ -482,215 +489,215 @@ void loop() {
 
 
 
- static const uint16_t input_buffer_pixels = 800; // may affect performance
-
-static const uint16_t max_row_width = 800; // for up to 7.5" display 800x480
-static const uint16_t max_palette_pixels = 256; // for depth <= 8
-
-uint8_t input_buffer[3 * input_buffer_pixels]; // up to depth 24
-uint8_t output_row_mono_buffer[max_row_width / 8]; // buffer for at least one row of b/w bits
-uint8_t output_row_color_buffer[max_row_width / 8]; // buffer for at least one row of color bits
-uint8_t mono_palette_buffer[max_palette_pixels / 8]; // palette buffer for depth <= 8 b/w
-uint8_t color_palette_buffer[max_palette_pixels / 8]; // palette buffer for depth <= 8 c/w
-
-void drawBitmapFromSpiffs(const char *filename, int16_t x, int16_t y, bool with_color)
-{
-  fs::File file;
-  bool valid = false; // valid format to be handled
-  bool flip = true; // bitmap is stored bottom-to-top
-  uint32_t startTime = millis();
-  if ((x >= display.epd2.WIDTH) || (y >= display.epd2.HEIGHT)) return;
-  Serial.println();
-  Serial.print("Loading image '");
-  Serial.print(filename);
-  Serial.println('\'');
-  file = SPIFFS.open(filename, "r");
-  if (!file)
+  static const uint16_t input_buffer_pixels = 800; // may affect performance
+  
+  static const uint16_t max_row_width = 800; // for up to 7.5" display 800x480
+  static const uint16_t max_palette_pixels = 256; // for depth <= 8
+  
+  uint8_t input_buffer[3 * input_buffer_pixels]; // up to depth 24
+  uint8_t output_row_mono_buffer[max_row_width / 8]; // buffer for at least one row of b/w bits
+  uint8_t output_row_color_buffer[max_row_width / 8]; // buffer for at least one row of color bits
+  uint8_t mono_palette_buffer[max_palette_pixels / 8]; // palette buffer for depth <= 8 b/w
+  uint8_t color_palette_buffer[max_palette_pixels / 8]; // palette buffer for depth <= 8 c/w
+  
+  void drawBitmapFromSpiffs(const char *filename, int16_t x, int16_t y, bool with_color)
   {
-    Serial.print("File not found");
-    return;
-  }
-  // Parse BMP header
-  if (read16(file) == 0x4D42) // BMP signature
-  {
-    uint32_t fileSize = read32(file);
-    uint32_t creatorBytes = read32(file);
-    uint32_t imageOffset = read32(file); // Start of image data
-    uint32_t headerSize = read32(file);
-    uint32_t width  = read32(file);
-    uint32_t height = read32(file);
-    uint16_t planes = read16(file);
-    uint16_t depth = read16(file); // bits per pixel
-    uint32_t format = read32(file);
-    if ((planes == 1) && ((format == 0) || (format == 3))) // uncompressed is handled, 565 also
+    fs::File file;
+    bool valid = false; // valid format to be handled
+    bool flip = true; // bitmap is stored bottom-to-top
+    uint32_t startTime = millis();
+    if ((x >= display.epd2.WIDTH) || (y >= display.epd2.HEIGHT)) return;
+    Serial.println();
+    Serial.print("Loading image '");
+    Serial.print(filename);
+    Serial.println('\'');
+    file = SPIFFS.open(filename, "r");
+    if (!file)
     {
-      Serial.print("File size: "); Serial.println(fileSize);
-      Serial.print("Image Offset: "); Serial.println(imageOffset);
-      Serial.print("Header size: "); Serial.println(headerSize);
-      Serial.print("Bit Depth: "); Serial.println(depth);
-      Serial.print("Image size: ");
-      Serial.print(width);
-      Serial.print('x');
-      Serial.println(height);
-      // BMP rows are padded (if needed) to 4-byte boundary
-      uint32_t rowSize = (width * depth / 8 + 3) & ~3;
-      if (depth < 8) rowSize = ((width * depth + 8 - depth) / 8 + 3) & ~3;
-      if (height < 0)
+      Serial.print("File not found");
+      return;
+    }
+    // Parse BMP header
+    if (read16(file) == 0x4D42) // BMP signature
+    {
+      uint32_t fileSize = read32(file);
+      uint32_t creatorBytes = read32(file);
+      uint32_t imageOffset = read32(file); // Start of image data
+      uint32_t headerSize = read32(file);
+      uint32_t width  = read32(file);
+      uint32_t height = read32(file);
+      uint16_t planes = read16(file);
+      uint16_t depth = read16(file); // bits per pixel
+      uint32_t format = read32(file);
+      if ((planes == 1) && ((format == 0) || (format == 3))) // uncompressed is handled, 565 also
       {
-        height = -height;
-        flip = false;
-      }
-      uint16_t w = width;
-      uint16_t h = height;
-      if ((x + w - 1) >= display.epd2.WIDTH)  w = display.epd2.WIDTH  - x;
-      if ((y + h - 1) >= display.epd2.HEIGHT) h = display.epd2.HEIGHT - y;
-      if (w <= max_row_width) // handle with direct drawing
-      {
-        valid = true;
-        uint8_t bitmask = 0xFF;
-        uint8_t bitshift = 8 - depth;
-        uint16_t red, green, blue;
-        bool whitish, colored;
-        if (depth == 1) with_color = false;
-        if (depth <= 8)
+        Serial.print("File size: "); Serial.println(fileSize);
+        Serial.print("Image Offset: "); Serial.println(imageOffset);
+        Serial.print("Header size: "); Serial.println(headerSize);
+        Serial.print("Bit Depth: "); Serial.println(depth);
+        Serial.print("Image size: ");
+        Serial.print(width);
+        Serial.print('x');
+        Serial.println(height);
+        // BMP rows are padded (if needed) to 4-byte boundary
+        uint32_t rowSize = (width * depth / 8 + 3) & ~3;
+        if (depth < 8) rowSize = ((width * depth + 8 - depth) / 8 + 3) & ~3;
+        if (height < 0)
         {
-          if (depth < 8) bitmask >>= depth;
-          //file.seek(54); //palette is always @ 54
-          file.seek(imageOffset - (4 << depth)); // 54 for regular, diff for colorsimportant
-          for (uint16_t pn = 0; pn < (1 << depth); pn++)
-          {
-            blue  = file.read();
-            green = file.read();
-            red   = file.read();
-            file.read();
-            whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80)) : ((red + green + blue) > 3 * 0x80); // whitish
-            colored = (red > 0xF0) || ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
-            if (0 == pn % 8) mono_palette_buffer[pn / 8] = 0;
-            mono_palette_buffer[pn / 8] |= whitish << pn % 8;
-            if (0 == pn % 8) color_palette_buffer[pn / 8] = 0;
-            color_palette_buffer[pn / 8] |= colored << pn % 8;
-          }
+          height = -height;
+          flip = false;
         }
-        display.clearScreen();
-        uint32_t rowPosition = flip ? imageOffset + (height - h) * rowSize : imageOffset;
-        for (uint16_t row = 0; row < h; row++, rowPosition += rowSize) // for each line
+        uint16_t w = width;
+        uint16_t h = height;
+        if ((x + w - 1) >= display.epd2.WIDTH)  w = display.epd2.WIDTH  - x;
+        if ((y + h - 1) >= display.epd2.HEIGHT) h = display.epd2.HEIGHT - y;
+        if (w <= max_row_width) // handle with direct drawing
         {
-          uint32_t in_remain = rowSize;
-          uint32_t in_idx = 0;
-          uint32_t in_bytes = 0;
-          uint8_t in_byte = 0; // for depth <= 8
-          uint8_t in_bits = 0; // for depth <= 8
-          uint8_t out_byte = 0xFF; // white (for w%8!=0 border)
-          uint8_t out_color_byte = 0xFF; // white (for w%8!=0 border)
-          uint32_t out_idx = 0;
-          file.seek(rowPosition);
-          for (uint16_t col = 0; col < w; col++) // for each pixel
+          valid = true;
+          uint8_t bitmask = 0xFF;
+          uint8_t bitshift = 8 - depth;
+          uint16_t red, green, blue;
+          bool whitish, colored;
+          if (depth == 1) with_color = false;
+          if (depth <= 8)
           {
-            // Time to read more pixel data?
-            if (in_idx >= in_bytes) // ok, exact match for 24bit also (size IS multiple of 3)
+            if (depth < 8) bitmask >>= depth;
+            //file.seek(54); //palette is always @ 54
+            file.seek(imageOffset - (4 << depth)); // 54 for regular, diff for colorsimportant
+            for (uint16_t pn = 0; pn < (1 << depth); pn++)
             {
-              in_bytes = file.read(input_buffer, in_remain > sizeof(input_buffer) ? sizeof(input_buffer) : in_remain);
-              in_remain -= in_bytes;
-              in_idx = 0;
+              blue  = file.read();
+              green = file.read();
+              red   = file.read();
+              file.read();
+              whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80)) : ((red + green + blue) > 3 * 0x80); // whitish
+              colored = (red > 0xF0) || ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
+              if (0 == pn % 8) mono_palette_buffer[pn / 8] = 0;
+              mono_palette_buffer[pn / 8] |= whitish << pn % 8;
+              if (0 == pn % 8) color_palette_buffer[pn / 8] = 0;
+              color_palette_buffer[pn / 8] |= colored << pn % 8;
             }
-            switch (depth)
+          }
+          display.clearScreen();
+          uint32_t rowPosition = flip ? imageOffset + (height - h) * rowSize : imageOffset;
+          for (uint16_t row = 0; row < h; row++, rowPosition += rowSize) // for each line
+          {
+            uint32_t in_remain = rowSize;
+            uint32_t in_idx = 0;
+            uint32_t in_bytes = 0;
+            uint8_t in_byte = 0; // for depth <= 8
+            uint8_t in_bits = 0; // for depth <= 8
+            uint8_t out_byte = 0xFF; // white (for w%8!=0 border)
+            uint8_t out_color_byte = 0xFF; // white (for w%8!=0 border)
+            uint32_t out_idx = 0;
+            file.seek(rowPosition);
+            for (uint16_t col = 0; col < w; col++) // for each pixel
             {
-              case 24:
-                blue = input_buffer[in_idx++];
-                green = input_buffer[in_idx++];
-                red = input_buffer[in_idx++];
-                whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80)) : ((red + green + blue) > 3 * 0x80); // whitish
-                colored = (red > 0xF0) || ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
-                break;
-              case 16:
-                {
-                  uint8_t lsb = input_buffer[in_idx++];
-                  uint8_t msb = input_buffer[in_idx++];
-                  if (format == 0) // 555
-                  {
-                    blue  = (lsb & 0x1F) << 3;
-                    green = ((msb & 0x03) << 6) | ((lsb & 0xE0) >> 2);
-                    red   = (msb & 0x7C) << 1;
-                  }
-                  else // 565
-                  {
-                    blue  = (lsb & 0x1F) << 3;
-                    green = ((msb & 0x07) << 5) | ((lsb & 0xE0) >> 3);
-                    red   = (msb & 0xF8);
-                  }
+              // Time to read more pixel data?
+              if (in_idx >= in_bytes) // ok, exact match for 24bit also (size IS multiple of 3)
+              {
+                in_bytes = file.read(input_buffer, in_remain > sizeof(input_buffer) ? sizeof(input_buffer) : in_remain);
+                in_remain -= in_bytes;
+                in_idx = 0;
+              }
+              switch (depth)
+              {
+                case 24:
+                  blue = input_buffer[in_idx++];
+                  green = input_buffer[in_idx++];
+                  red = input_buffer[in_idx++];
                   whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80)) : ((red + green + blue) > 3 * 0x80); // whitish
                   colored = (red > 0xF0) || ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
-                }
-                break;
-              case 1:
-              case 4:
-              case 8:
-                {
-                  if (0 == in_bits)
+                  break;
+                case 16:
                   {
-                    in_byte = input_buffer[in_idx++];
-                    in_bits = 8;
+                    uint8_t lsb = input_buffer[in_idx++];
+                    uint8_t msb = input_buffer[in_idx++];
+                    if (format == 0) // 555
+                    {
+                      blue  = (lsb & 0x1F) << 3;
+                      green = ((msb & 0x03) << 6) | ((lsb & 0xE0) >> 2);
+                      red   = (msb & 0x7C) << 1;
+                    }
+                    else // 565
+                    {
+                      blue  = (lsb & 0x1F) << 3;
+                      green = ((msb & 0x07) << 5) | ((lsb & 0xE0) >> 3);
+                      red   = (msb & 0xF8);
+                    }
+                    whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80)) : ((red + green + blue) > 3 * 0x80); // whitish
+                    colored = (red > 0xF0) || ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
                   }
-                  uint16_t pn = (in_byte >> bitshift) & bitmask;
-                  whitish = mono_palette_buffer[pn / 8] & (0x1 << pn % 8);
-                  colored = color_palette_buffer[pn / 8] & (0x1 << pn % 8);
-                  in_byte <<= depth;
-                  in_bits -= depth;
-                }
-                break;
-            }
-            if (whitish)
-            {
-              // keep white
-            }
-            else if (colored && with_color)
-            {
-              out_color_byte &= ~(0x80 >> col % 8); // colored
-            }
-            else
-            {
-              out_byte &= ~(0x80 >> col % 8); // black
-            }
-            if ((7 == col % 8) || (col == w - 1)) // write that last byte! (for w%8!=0 border)
-            {
-              output_row_color_buffer[out_idx] = out_color_byte;
-              output_row_mono_buffer[out_idx++] = out_byte;
-              out_byte = 0xFF; // white (for w%8!=0 border)
-              out_color_byte = 0xFF; // white (for w%8!=0 border)
-            }
-          } // end pixel
-          uint16_t yrow = y + (flip ? h - row - 1 : row);
-          display.writeImage(output_row_mono_buffer, output_row_color_buffer, x, yrow, w, 1);
-        } // end line
-        Serial.print("loaded in "); Serial.print(millis() - startTime); Serial.println(" ms");
-        display.refresh();
+                  break;
+                case 1:
+                case 4:
+                case 8:
+                  {
+                    if (0 == in_bits)
+                    {
+                      in_byte = input_buffer[in_idx++];
+                      in_bits = 8;
+                    }
+                    uint16_t pn = (in_byte >> bitshift) & bitmask;
+                    whitish = mono_palette_buffer[pn / 8] & (0x1 << pn % 8);
+                    colored = color_palette_buffer[pn / 8] & (0x1 << pn % 8);
+                    in_byte <<= depth;
+                    in_bits -= depth;
+                  }
+                  break;
+              }
+              if (whitish)
+              {
+                // keep white
+              }
+              else if (colored && with_color)
+              {
+                out_color_byte &= ~(0x80 >> col % 8); // colored
+              }
+              else
+              {
+                out_byte &= ~(0x80 >> col % 8); // black
+              }
+              if ((7 == col % 8) || (col == w - 1)) // write that last byte! (for w%8!=0 border)
+              {
+                output_row_color_buffer[out_idx] = out_color_byte;
+                output_row_mono_buffer[out_idx++] = out_byte;
+                out_byte = 0xFF; // white (for w%8!=0 border)
+                out_color_byte = 0xFF; // white (for w%8!=0 border)
+              }
+            } // end pixel
+            uint16_t yrow = y + (flip ? h - row - 1 : row);
+            display.writeImage(output_row_mono_buffer, output_row_color_buffer, x, yrow, w, 1);
+          } // end line
+          Serial.print("loaded in "); Serial.print(millis() - startTime); Serial.println(" ms");
+          display.refresh();
+        }
       }
     }
+    file.close();
+    if (!valid)
+    {
+      Serial.println("bitmap format not handled.");
+    }
   }
-  file.close();
-  if (!valid)
-  {
-    Serial.println("bitmap format not handled.");
+
+
+  uint16_t read16(fs::File& f){
+    
+    // BMP data is stored little-endian, same as Arduino.
+    uint16_t result;
+    ((uint8_t *)&result)[0] = f.read(); // LSB
+    ((uint8_t *)&result)[1] = f.read(); // MSB
+    return result;
   }
-}
-
-
-uint16_t read16(fs::File& f)
-{
-  // BMP data is stored little-endian, same as Arduino.
-  uint16_t result;
-  ((uint8_t *)&result)[0] = f.read(); // LSB
-  ((uint8_t *)&result)[1] = f.read(); // MSB
-  return result;
-}
-
-uint32_t read32(fs::File& f)
-{
-  // BMP data is stored little-endian, same as Arduino.
-  uint32_t result;
-  ((uint8_t *)&result)[0] = f.read(); // LSB
-  ((uint8_t *)&result)[1] = f.read();
-  ((uint8_t *)&result)[2] = f.read();
-  ((uint8_t *)&result)[3] = f.read(); // MSB
-  return result;
-}
+  
+  uint32_t read32(fs::File& f){
+    
+    // BMP data is stored little-endian, same as Arduino.
+    uint32_t result;
+    ((uint8_t *)&result)[0] = f.read(); // LSB
+    ((uint8_t *)&result)[1] = f.read();
+    ((uint8_t *)&result)[2] = f.read();
+    ((uint8_t *)&result)[3] = f.read(); // MSB
+    return result;
+  }
