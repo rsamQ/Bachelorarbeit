@@ -1,4 +1,4 @@
-const uint8_t Roboto_7Bitmaps[] PROGMEM = {
+const uint8_t FreeRoboto7pt7bBitmaps[] PROGMEM = {
 
 	// Bitmap Data:
 	0x00, // ' '
@@ -96,7 +96,7 @@ const uint8_t Roboto_7Bitmaps[] PROGMEM = {
 	0x92,0x49,0x00, // '|'
 	0x91,0x29,0x00 // '}'
 };
-const GFXglyph Roboto_7Glyphs[] PROGMEM = {
+const GFXglyph FreeRoboto7pt7bGlyphs[] PROGMEM = {
 // bitmapOffset, width, height, xAdvance, xOffset, yOffset
 	  {     0,   1,   1,   3,    0,    0 }, // ' '
 	  {     1,   3,   5,   3,    0,   -5 }, // '!'
@@ -193,5 +193,5 @@ const GFXglyph Roboto_7Glyphs[] PROGMEM = {
 	  {   265,   3,   6,   3,    0,   -5 }, // '|'
 	  {   268,   3,   6,   3,    0,   -5 } // '}'
 };
-const GFXfont Roboto_7 PROGMEM = {
-(uint8_t  *)Roboto_7Bitmaps,(GFXglyph *)Roboto_7Glyphs,0x20, 0x7E, 9};
+const GFXfont FreeRoboto7pt7b PROGMEM = {
+(uint8_t  *)FreeRoboto7pt7bBitmaps,(GFXglyph *)FreeRoboto7pt7bGlyphs,0x20, 0x7E, 9};
