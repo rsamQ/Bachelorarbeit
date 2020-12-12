@@ -18,7 +18,8 @@
 // Fonts
 #include <Fonts/FreeMonoBold12pt7b.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
-#include <Fonts/FreeRoboto7pt7b.h>
+#include <Fonts/RobotoMono_Regular5pt7b.h>
+#include <Fonts/DroidSansMono4pt7b.h>
 
 // Include template
 #include "new_template.h"
@@ -55,7 +56,6 @@ String errorMsg = "";
 
 // Max content size for json document
 const size_t MAXIMUM_CAPACITY = 4096;
-
 
 
 
@@ -172,7 +172,9 @@ void getJsonDataFrom_HTTP(const char* url){
   }
 }
 
-/*void checkForImage(const char* url){
+
+/*
+void checkForImage(const char* url){
   // wait for WiFi connection
   if ((WiFiMulti.run() == WL_CONNECTED)) {
 
@@ -186,8 +188,10 @@ void getJsonDataFrom_HTTP(const char* url){
     //http.begin(client, "jigsaw.w3.org", 80, "/HTTP/connection.html");
 
     Serial.print("[HTTP] GET...\n");
+    
     // start connection and send HTTP header
     int httpCode = http.GET();
+    
     if (httpCode > 0) {
       // HTTP header has been send and Server response header has been handled
       Serial.printf("[HTTP] GET... code: %d\n", httpCode);
@@ -195,19 +199,18 @@ void getJsonDataFrom_HTTP(const char* url){
       // file found at server
       if (httpCode == HTTP_CODE_OK) {
 
-        if(receiveImage == true){
+        SPIFFS.remove("image.bmp");
 
-          SPIFFS.remove("image.bmp");
-  
-          // get lenght of document (is -1 when Server sends no Content-Length header)
-          int len = http.getSize();
-  
-          // create buffer for read
-          uint8_t buff[128] = { 0 };
-  
-          // get tcp stream
-          WiFiClient * stream = &client;
-  
+        // get lenght of document (is -1 when Server sends no Content-Length header)
+        int len = http.getSize();
+
+        // create buffer for read
+        uint8_t buff[128] = { 0 };
+
+        // get tcp stream
+        WiFiClient * stream = &client;
+        
+        //if(checker == true){
           fs::File file;
           file = SPIFFS.open("image.bmp", "w");
   
@@ -230,11 +233,9 @@ void getJsonDataFrom_HTTP(const char* url){
             }
           }
           file.close();
-  
           Serial.println();
           Serial.print("[HTTP] connection closed or file end.\n");
-        }
-        receiveImage = false;
+        //}
       }
     } else {
       Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
@@ -242,8 +243,8 @@ void getJsonDataFrom_HTTP(const char* url){
 
     http.end();
   }
-}*/
-
+}
+*/
 
 
 
@@ -307,7 +308,7 @@ void drawJsonDataFromMemory(){
     display.setCursor(15, 25);
     display.println(room["room"].as<char*>());  // Room name
     display.setCursor(15, 374);
-    display.setFont();  // Reset font to standard
+    display.setFont(&RobotoMono_Regular5pt7b);
     display.println("Last Update: " + updateTime);  // Last update time
 
     for(int i = 1; i <= days; i++){
@@ -325,16 +326,19 @@ void drawJsonDataFromMemory(){
         display.drawRect(x, y, w, h, GxEPD_BLACK); // Draw border on display
         
         // Draw schedule data on display
-        display.setTextColor(GxEPD_BLACK);
-        display.setCursor(x + 5, y + 5);
+        display.setTextColor(GxEPD_BLACK, GxEPD_WHITE);
+        display.setFont(&DroidSansMono4pt7b);
+        display.setCursor(x + 5, y + 8);
         display.println(repo0["data"][j-1]["subject"].as<char*>());
-        display.setCursor(x + 5, y + 15);
-        display.println(repo0["data"][j-1]["professor"].as<char*>());
+        //display.setCursor(x + 5, y + 18);
+        //display.println(repo0["data"][j-1]["professor"].as<char*>());
+        lineBreak(repo0["data"][j-1]["professor"], x, y);
 
         // Draw error message on error occurrence
         if(connectionError == true){
     
           display.setTextColor(GxEPD_RED);
+          display.setFont(&RobotoMono_Regular5pt7b);
           display.setCursor(335, 364);
           display.println(errorMsg);
         }
@@ -344,9 +348,9 @@ void drawJsonDataFromMemory(){
   // Mode 1 represents an image for an event
   }else if(infoMode["mode"] == 1){
 
-    /*receiveImage = true;
-    drawBitmapFromSpiffs("image.bmp", 0, 0, true);
-    receiveImage = false;*/
+    //checker = true;
+    //drawBitmapFromSpiffs("image.bmp", 0, 0, true);
+    receiveImage = true;
 
   // Mode 2 represents a closed room
   }else if(infoMode["mode"] == 2){
@@ -410,7 +414,7 @@ void compareAndDrawJsonData(){
     display.setCursor(15, 25);
     display.println(room["room"].as<char*>());  // Room name
     display.setCursor(15, 374);
-    display.setFont();  // Rest font to standard
+    display.setFont(&RobotoMono_Regular5pt7b);
     display.println("Last Update: " + updateTime);  // Last update time
     
     
@@ -434,33 +438,35 @@ void compareAndDrawJsonData(){
 
           // Changes are drawn in red
           display.drawRect(x, y, w, h, GxEPD_RED); // Red border
-          display.setTextColor(GxEPD_RED);
-          display.setCursor(x + 5, y + 5);
+          display.setTextColor(GxEPD_RED, GxEPD_WHITE);
+          display.setFont(&DroidSansMono4pt7b);
+          display.setCursor(x + 5, y + 8);
           display.println(repo1["data"][j-1]["subject"].as<char*>());
-          display.setCursor(x + 5, y + 15);
-          display.println(repo1["data"][j-1]["professor"].as<char*>());
+          //display.setCursor(x + 5, y + 18);
+          //display.println(repo1["data"][j-1]["professor"].as<char*>());
+          lineBreak(repo1["data"][j-1]["professor"], x, y);
           
         }else{
 
           // Unchanged data is drawn in black
           display.drawRect(x, y, w, h, GxEPD_BLACK);  // Black border
-          display.setTextColor(GxEPD_BLACK);
-          display.setCursor(x + 5, y + 5);
+          display.setTextColor(GxEPD_BLACK, GxEPD_WHITE);
+          display.setFont(&DroidSansMono4pt7b);
+          display.setCursor(x + 5, y + 8);
           display.println(repo1["data"][j-1]["subject"].as<char*>());
-          display.setCursor(x + 5, y + 15);
-          display.println(repo1["data"][j-1]["professor"].as<char*>());    
+          //display.setCursor(x + 5, y + 18);
+          //display.println(repo1["data"][j-1]["professor"].as<char*>());
+          lineBreak(repo1["data"][j-1]["professor"], x, y);
         }
       }
     }
     
   // Mode 1 represents an image for an event
   }else if(infoMode["mode"] == 1){
-      
-    /*receiveImage = true;
-    checkForImage(imageUrl);
-    drawBitmapFromSpiffs("image.bmp", 0, 0, true);
-    receiveImage = false;
-    return;*/
+
+    receiveImage = true;
+    /*checkForImage(imageUrl);
+    drawBitmapFromSpiffs("image.bmp", 0, 0, true);*/
 
   // Mode 2 represents a closed room
   }else if(infoMode["mode"] == 2){
@@ -477,6 +483,28 @@ void compareAndDrawJsonData(){
     
   }
   storedData.close(); // Close file
+}
+
+
+
+void lineBreak(String string, int16_t x, int16_t y){
+
+  //display.getTextBounds(string.substring(counter), 0, 0, &x1, &y1, &w, &h);
+  
+  int16_t x1, y1, x2, y2;
+  uint16_t w, h, w2, h2;
+  uint16_t stringSize = string.length();
+  display.getTextBounds(string, 0, 0, &x2, &y2, &w2, &h2);
+  Serial.println(w2);
+  if(stringSize > 16){
+    display.setCursor(x + 5, y + 18);
+    display.println(string.substring(0, 15)); 
+    display.setCursor(x + 5, y + 26);
+    display.println(string.substring(15)); 
+  }else{
+    display.setCursor(x + 5, y + 18);
+    display.println(string);
+  }
 }
 
 
@@ -503,11 +531,11 @@ void loop() {
     display.drawPaged(drawData, 0); // Draw/Load display in chunks
     writeJsonTo_SPIFFS();
   }
-  delay(1000*60);
+  delay(1000*30);
  }
 
 
-
+/*
 static const uint16_t input_buffer_pixels = 800; // may affect performance
 
 static const uint16_t max_row_width = 800; // for up to 7.5" display 800x480
@@ -698,7 +726,7 @@ void drawBitmapFromSpiffs(const char *filename, int16_t x, int16_t y, bool with_
   {
     Serial.println("bitmap format not handled.");
   }
-}
+}*/
 
 
 uint16_t read16(fs::File& f){

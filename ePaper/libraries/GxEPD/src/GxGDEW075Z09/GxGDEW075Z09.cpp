@@ -31,71 +31,6 @@ GxGDEW075Z09::GxGDEW075Z09(GxIO& io, int8_t rst, int8_t busy)
 {
 }
 
-void GxGDEW075Z09::drawPartial (const uint8_t *bitmap_3C, uint16_t xd, uint16_t yd, uint16_t w, uint16_t h, bool in_ram)
-{
-    if (xd >= GxGDEW075Z09_WIDTH) return;
-    if (yd >= GxGDEW075Z09_HEIGHT) return;
-    // the screen limits are the hard limits
-    _wakeUp();
-    uint16_t xde = gx_uint16_min(GxGDEW075Z09_WIDTH, xd + w) - 1;
-    uint16_t yde = gx_uint16_min(GxGDEW075Z09_HEIGHT, yd + h) - 1;
-    IO.writeCommandTransaction(0x91); // partial in
-    // soft limits, must send as many bytes as set by _SetRamArea
-    uint16_t yse = yde - yd;
-    uint16_t xse = (xde - xd) >> 2;
-    uint16_t xse_d8 = _setPartialRamArea(xd, yd, xde, yde);
-    IO.writeCommandTransaction(0x10);
-    uint16_t idx = 0;
-    for (int16_t y1 = 0; y1 <= yse; y1++)
-    {
-        for (int16_t x1 = 0; x1 <= xse; x1++)
-        {
-            unsigned char j, temp1, temp2, temp3;
-#if defined(__AVR) || defined(ESP8266) || defined(ESP32)
-            if (in_ram)
-                temp1 = bitmap_3C[idx];
-            else
-                temp1 = pgm_read_byte(&bitmap_3C[idx]);
-#else
-            temp1 = bitmap_3C[idx];
-#endif
-            idx++;
-            for (j = 0; j < 4; j++)
-            {
-                temp2 = temp1 & 0xc0;
-                if (temp2 == 0xc0)
-                    temp3 = 0x00;
-                else if (temp2 == 0x00)
-                    temp3 = 0x03;
-                else
-                    temp3 = 0x04;
-                temp1 <<= 2;
-                temp3 <<= 4;
-                j++;
-                temp2 = temp1 & 0xc0;
-                if (temp2 == 0xc0)
-                    temp3 |= 0x00;
-                else if (temp2 == 0x00)
-                    temp3 |= 0x03;
-                else
-                    temp3 |= 0x04;
-                temp1 <<= 2;
-                IO.writeDataTransaction(temp3);
-            }
-        }
-    }
-    IO.writeCommandTransaction(0x92); // partial out
-}
-
-void GxGDEW075Z09::commitPartial ()
-{
-    IO.writeCommandTransaction(0x12);       //display refresh
-    _waitWhileBusy("commitPartial");
-    IO.writeCommandTransaction(0x92);       // partial out
-    delay(GxGDEW075Z09_PU_DELAY);           // don't stress this display
-    _sleep();
-}
-
 void GxGDEW075Z09::drawPixel(int16_t x, int16_t y, uint16_t color)
 {
   if ((x < 0) || (x >= width()) || (y < 0) || (y >= height())) return;
@@ -298,7 +233,7 @@ void GxGDEW075Z09::drawExamplePicture_3C(const uint8_t* bitmap_3C, uint32_t size
   }
   IO.writeCommandTransaction(0x12);      //display refresh
   _waitWhileBusy("drawExamplePicture_3C");
-  if (_using_partial_mode) IO.writeCommandTransaction(0x92); // partial out
+  if (_using_partial_mode) IO.writeCommandTransaction(0x92); // partial out  
   else _sleep();
 }
 
@@ -919,3 +854,4 @@ void GxGDEW075Z09::drawCornerTest(uint8_t em)
   _waitWhileBusy("drawCornerTest");
   _sleep();
 }
+
