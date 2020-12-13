@@ -87,6 +87,72 @@ void setup() {
 }
 
 
+inline void printDebugNoNewLine(String message) {
+#ifdef DEBUG
+    Serial.print(message);
+#endif
+}
+
+inline void printDebug(String message) {
+#ifdef DEBUG
+    Serial.println(message);
+#endif
+}
+
+
+// Deep-sleep for specified amount of hours, one hour at a time.
+// If powered on (not a deep-sleep reset), nothing will happen.
+// Call this twice: in the beginning of setup (end_of_setup == false)
+// and at the end of setup (end_of_setup == true).
+void deepSleepCycle(uint32_t hours, bool end_of_setup = false) {
+
+    uint32_t reset_counter = 0;
+    bool waking_from_sleep = ESP.getResetReason() == "Deep-Sleep Wake";
+
+    if (!end_of_setup) {
+        if (waking_from_sleep) {
+            printDebugNoNewLine("Waking up from deep-sleep via reset pin. Reset counter: ");
+            ESP.rtcUserMemoryRead(0, &reset_counter, sizeof(reset_counter));
+            reset_counter++;
+            ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
+            printDebug(String(reset_counter));
+        } else {
+            printDebug("Zeroing reset counter.");
+            ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
+            return;
+        }
+    }
+
+    // With larger values, deep-sleep is unrealiable: it might never wake up and consume a lot of power.
+    // Therefore sleep one hour at a time.
+    // In reality, the ESP sleeps around 59 minutes when told to sleep 60.
+    if (reset_counter < hours) {
+        // If this is the first time going to sleep, do the radio calibration once.
+        // Otherwise, disable radio (WiFi).
+        RFMode wake_mode = waking_from_sleep ? WAKE_RF_DISABLED : WAKE_RFCAL;
+        if (reset_counter + 1 == hours) {
+            // Wake up with radio on if the next power cycle finishes sleeping.
+            wake_mode = WAKE_NO_RFCAL;
+        }
+        printDebug("Going to deep-sleep for 1 hour.");
+        // 1: WAKE_RFCAL
+        // 2: WAKE_NO_RFCAL
+        // 4: WAKE_RF_DISABLED
+        printDebug("Radio mode will be: " + String(wake_mode));
+
+#ifdef DEBUG
+        // Give some time to print debug messages to monitor before going to sleep.
+        delay(100);
+#endif
+
+        ESP.deepSleep(3600*1e6, wake_mode);
+    }
+    reset_counter = 0;
+    ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
+
+}
+
+
 
 
 // Callback function for comparing 
@@ -173,7 +239,14 @@ void getJsonDataFrom_HTTP(const char* url){
 }
 
 
-/*
+
+void drawingImage(){
+    drawBitmapFromSpiffs("image.bmp", 0, 0, true);
+    receiveImage = false;
+}
+
+
+
 void checkForImage(const char* url){
   // wait for WiFi connection
   if ((WiFiMulti.run() == WL_CONNECTED)) {
@@ -244,7 +317,6 @@ void checkForImage(const char* url){
     http.end();
   }
 }
-*/
 
 
 
@@ -348,8 +420,6 @@ void drawJsonDataFromMemory(){
   // Mode 1 represents an image for an event
   }else if(infoMode["mode"] == 1){
 
-    //checker = true;
-    //drawBitmapFromSpiffs("image.bmp", 0, 0, true);
     receiveImage = true;
 
   // Mode 2 represents a closed room
@@ -465,8 +535,6 @@ void compareAndDrawJsonData(){
   }else if(infoMode["mode"] == 1){
 
     receiveImage = true;
-    /*checkForImage(imageUrl);
-    drawBitmapFromSpiffs("image.bmp", 0, 0, true);*/
 
   // Mode 2 represents a closed room
   }else if(infoMode["mode"] == 2){
@@ -495,7 +563,7 @@ void lineBreak(String string, int16_t x, int16_t y){
   uint16_t w, h, w2, h2;
   uint16_t stringSize = string.length();
   display.getTextBounds(string, 0, 0, &x2, &y2, &w2, &h2);
-  Serial.println(w2);
+  //Serial.println(w2);
   if(stringSize > 16){
     display.setCursor(x + 5, y + 18);
     display.println(string.substring(0, 15)); 
@@ -521,21 +589,33 @@ void drawTemplate(){
 
 // Program loop
 void loop() {
+
+   // Start deep sleep cycle
+  //deepSleepCycle(2);
+  
   getJsonDataFrom_HTTP(jsonUrl);
   
   if(connectionError == true){
-    display.refresh();
-    display.drawPaged(drawTempData, 0); // Draw/Load display in chunks
+    if(receiveImage == true){
+      drawingImage();
+    }else{
+      display.refresh();
+      display.drawPaged(drawTempData, 0); // Draw/Load display in chunks
+    }
+  }else if(receiveImage == true){
+    checkForImage(imageUrl);
+    drawingImage();
   }else{
     display.refresh();
     display.drawPaged(drawData, 0); // Draw/Load display in chunks
     writeJsonTo_SPIFFS();
   }
-  delay(1000*30);
+  //deepSleepCycle(12, true); //
+  delay(20000);
  }
 
 
-/*
+
 static const uint16_t input_buffer_pixels = 800; // may affect performance
 
 static const uint16_t max_row_width = 800; // for up to 7.5" display 800x480
@@ -726,7 +806,7 @@ void drawBitmapFromSpiffs(const char *filename, int16_t x, int16_t y, bool with_
   {
     Serial.println("bitmap format not handled.");
   }
-}*/
+}
 
 
 uint16_t read16(fs::File& f){
