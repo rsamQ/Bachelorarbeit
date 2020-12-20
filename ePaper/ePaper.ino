@@ -59,102 +59,6 @@ const size_t MAXIMUM_CAPACITY = 4096;
 
 
 
-void setup() {
-  
-  // Initialize serial and e-paper monitor output
-  Serial.begin(115200);
-  display.init(115200);
-
-  // Activate WIFI
-  WiFi.mode(WIFI_STA);
-  WiFiMulti.addAP("Smart-Fridge", "BusterKeel");
-
-  // Activate SPIFFS
-  if (SPIFFS.begin()) {
-    Serial.println(F("\nSPIFFS mounted"));
-  } else {
-    Serial.println(F("\nFailed to mount SPIFFS"));
-  }
-
-  Serial.println(F("Formating SPIFFS "));
-
-  // Mount SPIFFS
-  if (SPIFFS.format()) {
-    Serial.println(F("done"));
-  } else {
-    Serial.println(F("ERROR"));
-  }
-}
-
-
-inline void printDebugNoNewLine(String message) {
-#ifdef DEBUG
-    Serial.print(message);
-#endif
-}
-
-inline void printDebug(String message) {
-#ifdef DEBUG
-    Serial.println(message);
-#endif
-}
-
-
-// Deep-sleep for specified amount of hours, one hour at a time.
-// If powered on (not a deep-sleep reset), nothing will happen.
-// Call this twice: in the beginning of setup (end_of_setup == false)
-// and at the end of setup (end_of_setup == true).
-void deepSleepCycle(uint32_t hours, bool end_of_setup = false) {
-
-    uint32_t reset_counter = 0;
-    bool waking_from_sleep = ESP.getResetReason() == "Deep-Sleep Wake";
-
-    if (!end_of_setup) {
-        if (waking_from_sleep) {
-            printDebugNoNewLine("Waking up from deep-sleep via reset pin. Reset counter: ");
-            ESP.rtcUserMemoryRead(0, &reset_counter, sizeof(reset_counter));
-            reset_counter++;
-            ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
-            printDebug(String(reset_counter));
-        } else {
-            printDebug("Zeroing reset counter.");
-            ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
-            return;
-        }
-    }
-
-    // With larger values, deep-sleep is unrealiable: it might never wake up and consume a lot of power.
-    // Therefore sleep one hour at a time.
-    // In reality, the ESP sleeps around 59 minutes when told to sleep 60.
-    if (reset_counter < hours) {
-        // If this is the first time going to sleep, do the radio calibration once.
-        // Otherwise, disable radio (WiFi).
-        RFMode wake_mode = waking_from_sleep ? WAKE_RF_DISABLED : WAKE_RFCAL;
-        if (reset_counter + 1 == hours) {
-            // Wake up with radio on if the next power cycle finishes sleeping.
-            wake_mode = WAKE_NO_RFCAL;
-        }
-        printDebug("Going to deep-sleep for 1 hour.");
-        // 1: WAKE_RFCAL
-        // 2: WAKE_NO_RFCAL
-        // 4: WAKE_RF_DISABLED
-        printDebug("Radio mode will be: " + String(wake_mode));
-
-#ifdef DEBUG
-        // Give some time to print debug messages to monitor before going to sleep.
-        delay(100);
-#endif
-
-        ESP.deepSleep(3600*1e6, wake_mode);
-    }
-    reset_counter = 0;
-    ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
-
-}
-
-
-
-
 // Callback function for comparing 
 // data from SPIFFS and GET request.
 void drawData(const void*){
@@ -557,13 +461,10 @@ void compareAndDrawJsonData(){
 
 void lineBreak(String string, int16_t x, int16_t y){
 
-  //display.getTextBounds(string.substring(counter), 0, 0, &x1, &y1, &w, &h);
-  
-  int16_t x1, y1, x2, y2;
-  uint16_t w, h, w2, h2;
+  int16_t x1, y1;
+  uint16_t w, h;
   uint16_t stringSize = string.length();
-  display.getTextBounds(string, 0, 0, &x2, &y2, &w2, &h2);
-  //Serial.println(w2);
+  display.getTextBounds(string, 0, 0, &x1, &y1, &w, &h);
   if(stringSize > 16){
     display.setCursor(x + 5, y + 18);
     display.println(string.substring(0, 15)); 
@@ -587,32 +488,57 @@ void drawTemplate(){
 
 
 
-// Program loop
-void loop() {
+// Deep-sleep for specified amount of hours, one hour at a time.
+// If powered on (not a deep-sleep reset), nothing will happen.
+// Call this twice: in the beginning of setup (end_of_setup == false)
+// and at the end of setup (end_of_setup == true).
+void deepSleepCycle(uint32_t hours, bool end_of_setup = false) {
 
-   // Start deep sleep cycle
-  //deepSleepCycle(2);
-  
-  getJsonDataFrom_HTTP(jsonUrl);
-  
-  if(connectionError == true){
-    if(receiveImage == true){
-      drawingImage();
-    }else{
-      display.refresh();
-      display.drawPaged(drawTempData, 0); // Draw/Load display in chunks
+    uint32_t reset_counter = 0;
+    bool waking_from_sleep = ESP.getResetReason() == "Deep-Sleep Wake";
+
+    if (!end_of_setup) {
+        if (waking_from_sleep) {
+            Serial.println("Waking up from deep-sleep via reset pin. Reset counter: ");
+            ESP.rtcUserMemoryRead(0, &reset_counter, sizeof(reset_counter));
+            reset_counter++;
+            ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
+            Serial.println(String(reset_counter));
+        } else {
+            Serial.println("Zeroing reset counter.");
+            ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
+            return;
+        }
     }
-  }else if(receiveImage == true){
-    checkForImage(imageUrl);
-    drawingImage();
-  }else{
-    display.refresh();
-    display.drawPaged(drawData, 0); // Draw/Load display in chunks
-    writeJsonTo_SPIFFS();
-  }
-  //deepSleepCycle(12, true); //
-  delay(20000);
- }
+
+    // With larger values, deep-sleep is unrealiable: it might never wake up and consume a lot of power.
+    // Therefore sleep one hour at a time.
+    // In reality, the ESP sleeps around 59 minutes when told to sleep 60.
+    if (reset_counter < hours) {
+        // If this is the first time going to sleep, do the radio calibration once.
+        // Otherwise, disable radio (WiFi).
+        RFMode wake_mode = waking_from_sleep ? WAKE_RF_DISABLED : WAKE_RFCAL;
+        if (reset_counter + 1 == hours) {
+            // Wake up with radio on if the next power cycle finishes sleeping.
+            wake_mode = WAKE_NO_RFCAL;
+        }
+        Serial.println("Going to deep-sleep for 1 hour.");
+        // 1: WAKE_RFCAL
+        // 2: WAKE_NO_RFCAL
+        // 4: WAKE_RF_DISABLED
+        Serial.println("Radio mode will be: " + String(wake_mode));
+
+#ifdef DEBUG
+        // Give some time to print debug messages to monitor before going to sleep.
+        delay(100);
+#endif
+
+        ESP.deepSleep(30*1e6, wake_mode);
+    }
+    reset_counter = 0;
+    ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
+
+}
 
 
 
@@ -809,6 +735,7 @@ void drawBitmapFromSpiffs(const char *filename, int16_t x, int16_t y, bool with_
 }
 
 
+
 uint16_t read16(fs::File& f){
   
   // BMP data is stored little-endian, same as Arduino.
@@ -817,6 +744,8 @@ uint16_t read16(fs::File& f){
   ((uint8_t *)&result)[1] = f.read(); // MSB
   return result;
 }
+
+
 
 uint32_t read32(fs::File& f){
   
@@ -828,3 +757,59 @@ uint32_t read32(fs::File& f){
   ((uint8_t *)&result)[3] = f.read(); // MSB
   return result;
 }
+
+
+
+void setup() {
+  
+  // Initialize serial and e-paper monitor output
+  Serial.begin(115200);
+  display.init(115200);
+
+  deepSleepCycle(2);
+
+  // Activate WIFI
+  WiFi.mode(WIFI_STA);
+  WiFiMulti.addAP("Smart-Fridge", "BusterKeel");
+
+  // Activate SPIFFS
+  if (SPIFFS.begin()) {
+    Serial.println(F("\nSPIFFS mounted"));
+  } else {
+    Serial.println(F("\nFailed to mount SPIFFS"));
+  }
+
+  Serial.println(F("Formating SPIFFS "));
+
+  // Mount SPIFFS
+  if (SPIFFS.format()) {
+    Serial.println(F("done"));
+  } else {
+    Serial.println(F("ERROR"));
+  }
+
+    getJsonDataFrom_HTTP(jsonUrl);
+  
+  if(connectionError == true){
+    if(receiveImage == true){
+      drawingImage();
+    }else{
+      display.refresh();
+      display.drawPaged(drawTempData, 0); // Draw/Load display in chunks
+    }
+  }else if(receiveImage == true){
+    checkForImage(imageUrl);
+    drawingImage();
+  }else{
+    display.refresh();
+    display.drawPaged(drawData, 0); // Draw/Load display in chunks
+    writeJsonTo_SPIFFS();
+  }
+
+  deepSleepCycle(2, true);
+}
+
+
+
+// Program loop
+void loop() { }
