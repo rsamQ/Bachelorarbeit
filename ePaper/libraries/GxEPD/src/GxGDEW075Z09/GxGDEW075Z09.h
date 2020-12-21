@@ -47,9 +47,6 @@ class GxGDEW075Z09 : public GxEPD
 #else
     GxGDEW075Z09(GxIO& io, int8_t rst = 9, int8_t busy = 7);
 #endif
-void drawPartial (const uint8_t *bitmap_3C, uint16_t x, uint16_t y, uint16_t w, uint16_t h, bool in_ram);
-void commitPartial ();
-
     void drawPixel(int16_t x, int16_t y, uint16_t color);
     void init(uint32_t serial_diag_bitrate = 0); // = 0 : disabled
     void fillScreen(uint16_t color); // 0x0 black, >0x0 white, to buffer
@@ -127,3 +124,4 @@ void commitPartial ();
 #endif
 
 #endif
+
