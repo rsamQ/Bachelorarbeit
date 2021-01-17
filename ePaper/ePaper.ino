@@ -49,15 +49,12 @@ const char* jsonUrl = "http://192.168.1.101:150/serverData/schedule/";
 const int httpPort = 150;
 
 // Response Header Parameters
-const char * headerKeys[] = {"date", "server"} ;
-const size_t numberOfHeaders = 2;
+const char * headerKeys[] = {"date"} ;
+const size_t numberOfHeaders = 1;
 
 // Variables for temporary data
 String tempJson = "";
 String updateTime = "";
-
-// Parameter to determine data content
-bool receiveImage = false;
 
 // Paramaeters for error determination and output
 bool connectionError = false;
@@ -358,7 +355,6 @@ uint32_t read32(fs::File& f)
 
 void drawBitmaps_test(){
   drawBitmapFromSpiffs("image.bmp", 0, 0);
-  receiveImage = false;
 }
 
 /* __________________________________________________________________________________________________*/
@@ -469,7 +465,6 @@ void getJsonDataFrom_HTTP(const char* url){
           
           // Draw error code SERVER and time onto the display
           connectionError = true;
-          updateTime = http.header("date");
           errorMsg = (F("Error: "));
           errorMsg += http.errorToString(httpCode).c_str();
           Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
@@ -510,6 +505,7 @@ void drawJsonDataFromMemory(){
   int16_t startingHour = 8;
 
   File storedData = SPIFFS.open("test.json", "r");  // Open file
+  File storedTime = SPIFFS.open("time.json", "r");  // Open file
 
   // Stored json data
   DynamicJsonDocument storedDoc(MAXIMUM_CAPACITY);
@@ -518,65 +514,93 @@ void drawJsonDataFromMemory(){
   // Extract data from json document for determination reasons
   JsonObject infoMode = storedDoc[6];
   JsonObject room = storedDoc[7];
-  JsonObject closedRoom = storedDoc[8];
 
-  // Mode 0 represents normal schedule
-  if(infoMode["mode"] == 0){
-    drawTemplate();
+  drawTemplate();
 
-    display.setTextColor(GxEPD_BLACK);
-    display.setFont(&FreeMonoBold9pt7b);
-    display.setCursor(15, 25);
-    display.println(room["room"].as<char*>());  // Room name
-    display.setCursor(15, 374);
-    display.setFont(&RobotoMono_Regular5pt7b);
-    display.println("Last Update: " + updateTime);  // Last update time
+  display.setTextColor(GxEPD_BLACK);
+  display.setFont(&FreeMonoBold9pt7b);
+  display.setCursor(15, 25);
+  display.println(room["room"].as<char*>());  // Room name
+  display.setCursor(15, 374);
+  display.setFont(&RobotoMono_Regular5pt7b);
+  display.println("Last Update: " + storedTime);  // Last update time
 
-    for(int i = 1; i <= days; i++){
-      JsonObject repo0 = storedDoc[i-1].as<JsonObject>();  // JsonObject for each day
-    
-      for(int j = 1; j <= repo0["data"].size(); j++){
+  for(int i = 1; i <= days; i++){
+    JsonObject repo0 = storedDoc[i-1].as<JsonObject>();  // JsonObject for each day
+  
+    for(int j = 1; j <= repo0["data"].size(); j++){
+      
+      int16_t hour = repo0["data"][j-1]["hour"].as<int>();    // Starting time -> hour
+      int16_t minutes = repo0["data"][j-1]["minutes"].as<int>();  // Starting time -> minute
+      int16_t x = offsetLeft + (i-1) * ((display.width() - offsetLeft) / days);   // Startpoint border x
+      int16_t y = offsetTop + ((hour - startingHour) * (4 * heightPerDuration) + (minutes / duration) * heightPerDuration);   // Startpoint border y
+      int16_t w = ((display.width() - offsetLeft) / days) - 8;    // Border width
+      int16_t h = ((repo0["data"][j-1]["duration"].as<int>() / duration) * heightPerDuration);    // Border height
         
-        int16_t hour = repo0["data"][j-1]["hour"].as<int>();    // Starting time -> hour
-        int16_t minutes = repo0["data"][j-1]["minutes"].as<int>();  // Starting time -> minute
-        int16_t x = offsetLeft + (i-1) * ((display.width() - offsetLeft) / days);   // Startpoint border x
-        int16_t y = offsetTop + ((hour - startingHour) * (4 * heightPerDuration) + (minutes / duration) * heightPerDuration);   // Startpoint border y
-        int16_t w = ((display.width() - offsetLeft) / days) - 8;    // Border width
-        int16_t h = ((repo0["data"][j-1]["duration"].as<int>() / duration) * heightPerDuration);    // Border height
-          
-        display.drawRect(x, y, w, h, GxEPD_BLACK); // Draw border on display
-        
-        // Draw schedule data on display
-        display.setTextColor(GxEPD_BLACK);
-        display.setFont(&Cousine_Regular4pt7b);
-        display.setCursor(x + 5, y + 8);
-        display.println(repo0["data"][j-1]["subject"].as<char*>());
-        //display.setCursor(x + 5, y + 18);
-        //display.println(repo0["data"][j-1]["professor"].as<char*>());
-        lineBreak(repo0["data"][j-1]["professor"], x, y);
+      display.drawRect(x, y, w, h, GxEPD_BLACK); // Draw border on display
+      
+      // Draw schedule data on display
+      display.setTextColor(GxEPD_BLACK);
+      display.setFont(&Cousine_Regular4pt7b);
+      display.setCursor(x + 5, y + 8);
+      display.println(repo0["data"][j-1]["subject"].as<char*>());
+      lineBreak(repo0["data"][j-1]["professor"], x, y);
 
-        // Draw error message on error occurrence
-        if(connectionError == true){
-    
-          display.setTextColor(GxEPD_RED);
-          display.setFont(&RobotoMono_Regular5pt7b);
-          display.setCursor(335, 374);
-          display.println(errorMsg);
-        }
+      // Draw error message on error occurrence
+      if(connectionError == true){
+  
+        display.setTextColor(GxEPD_RED);
+        display.setFont(&RobotoMono_Regular5pt7b);
+        display.setCursor(335, 374);
+        display.println(errorMsg);
       }
-    }
+    }    
+  }
+  storedData.close(); // Close file
+}
 
-  // Mode 1 represents an image for an event
-  }else if(infoMode["mode"] == 1){
+void drawClosedRoom(){
 
-    receiveImage = true;
+  if(connectionError == true){
+
+    File storedData = SPIFFS.open("test.json", "r");  // Open file
+  
+    // Stored json data
+    DynamicJsonDocument storedDoc(MAXIMUM_CAPACITY);
+    deserializeJson(storedDoc, storedData);
+
+    // Extract data from json document for determination reasons
+    JsonObject closedRoom = storedDoc[8];
     
-  // Mode 2 represents a closed room
-  }else if(infoMode["mode"] == 2){
-
     display.setTextColor(GxEPD_RED);
     display.setFont(&FreeMonoBold12pt7b);
+  
+    // Draw reason for closed room
+    display.setCursor(display.width()/10, display.height()/2);
+    display.println(F("Dieser Raum ist momentan geschlossen!"));
+    display.setCursor((display.width()/10), (display.height()/2)+ 40);
+    display.print("Grund: ");
+    display.print(closedRoom["info"].as<char*>());
 
+    display.setTextColor(GxEPD_RED);
+    display.setFont(&RobotoMono_Regular5pt7b);
+    display.setCursor(335, 374);
+    display.println(errorMsg);  // Error Message
+
+    storedTime.close();
+    storedData.close();
+  }else{
+
+    // Stored json data
+    DynamicJsonDocument recievedDoc(MAXIMUM_CAPACITY);
+    deserializeJson(recievedDoc, tempJson);
+ 
+    // Extract data from json document for determination reasons
+    JsonObject closedRoom = recievedDoc[8];
+    
+    display.setTextColor(GxEPD_RED);
+    display.setFont(&FreeMonoBold12pt7b);
+  
     // Draw reason for closed room
     display.setCursor(display.width()/10, display.height()/2);
     display.println(F("Dieser Raum ist momentan geschlossen!"));
@@ -585,7 +609,6 @@ void drawJsonDataFromMemory(){
     display.print(closedRoom["info"].as<char*>());
     
   }
-  storedData.close(); // Close file
 }
 
 
@@ -623,8 +646,6 @@ void compareAndDrawJsonData(){
   JsonObject room = receivedDoc[7];
   JsonObject closedRoom = receivedDoc[8];
 
-  // Mode 0 represents normal schedule
-  if(infoMode["mode"] == 0){
     drawTemplate();
 
     display.setTextColor(GxEPD_BLACK);
@@ -660,8 +681,6 @@ void compareAndDrawJsonData(){
           display.setFont(&Cousine_Regular4pt7b);
           display.setCursor(x + 5, y + 8);
           display.println(repo1["data"][j-1]["subject"].as<char*>());
-          //display.setCursor(x + 5, y + 18);
-          //display.println(repo1["data"][j-1]["professor"].as<char*>());
           lineBreak(repo1["data"][j-1]["professor"], x, y);
           
         }else{
@@ -672,32 +691,10 @@ void compareAndDrawJsonData(){
           display.setFont(&Cousine_Regular4pt7b);
           display.setCursor(x + 5, y + 8);
           display.println(repo1["data"][j-1]["subject"].as<char*>());
-          //display.setCursor(x + 5, y + 18);
-          //display.println(repo1["data"][j-1]["professor"].as<char*>());
           lineBreak(repo1["data"][j-1]["professor"], x, y);
         }
       }
     }
-    
-  // Mode 1 represents an image for an event
-  }else if(infoMode["mode"] == 1){
-
-   receiveImage = true;
-
-  // Mode 2 represents a closed room
-  }else if(infoMode["mode"] == 2){
-    
-    display.setTextColor(GxEPD_RED);
-    display.setFont(&FreeMonoBold12pt7b);
-
-    // Draw reason for closed room
-    display.setCursor(display.width()/10, display.height()/2);
-    display.println(F("Dieser Raum ist momentan geschlossen!"));
-    display.setCursor((display.width()/10), (display.height()/2)+ 40);
-    display.print("Grund: ");
-    display.print(closedRoom["info"].as<char*>());
-    
-  }
   storedData.close(); // Close file
 }
 
@@ -709,7 +706,7 @@ void lineBreak(String string, int16_t x, int16_t y){
   uint16_t w, h;
   uint16_t stringSize = string.length();
   display.getTextBounds(string, 0, 0, &x1, &y1, &w, &h);
-  if(stringSize > 16){
+  if(stringSize > 14){
     display.setCursor(x + 5, y + 18);
     display.println(string.substring(0, 15)); 
     display.setCursor(x + 5, y + 26);
@@ -742,6 +739,8 @@ void checkMode(){
   DynamicJsonDocument storedDoc(MAXIMUM_CAPACITY);  // Stored json data
   DynamicJsonDocument receivedDoc(MAXIMUM_CAPACITY); // Received json data
 
+  listFiles();
+  
   if (connectionError == true){
     
     File storedData = SPIFFS.open("test.json", "r");  // Open file
@@ -760,15 +759,16 @@ void checkMode(){
   
     // Mode 0 represents normal schedule
     if(infoMode["mode"] == 0){
-      receiveImage = false;
+      display.refresh();
+      display.drawPaged(drawTempData, 0); // Draw/Load display in chunks
   
     // Mode 1 represents an image for an event
     }else if(infoMode["mode"] == 1){
-      receiveImage = true;
+      drawBitmaps_test();
       
     // Mode 2 represents a closed room
     }else if(infoMode["mode"] == 2){
-      receiveImage = false;
+      display.drawPaged(drawClosedSign, 0);
     }  
     storedData.close(); // Close file
     
@@ -781,16 +781,20 @@ void checkMode(){
   
     // Mode 0 represents normal schedule
     if(infoMode["mode"] == 0){
-      receiveImage = false;
+      display.refresh();
+      display.drawPaged(drawData, 0); // Draw/Load display in chunks
   
     // Mode 1 represents an image for an event
     }else if(infoMode["mode"] == 1){
-      receiveImage = true;
+      downloadImageFrom_HTTP(host_url, path_url, "image.bmp", "image.bmp");
+      drawBitmaps_test();
       
     // Mode 2 represents a closed room
     }else if(infoMode["mode"] == 2){
-      receiveImage = false;
+      display.drawPaged(drawClosedSign, 0);
     }
+    writeJsonTo_SPIFFS();
+    writeUpdateTimeTo_SPIFFS();
   }
 }
 
@@ -814,6 +818,13 @@ void drawTempData(const void*){
   drawJsonDataFromMemory();
 }
 
+
+// Callback function for drawing Data
+// for closed Room.
+void drawClosedSign(const void*){
+  drawClosedRoom();
+}
+
 /* __________________________________________________________________________________________________*/
 
 
@@ -823,26 +834,33 @@ void drawTempData(const void*){
 
 // Write json payload(string) to SPIFFS
 void writeJsonTo_SPIFFS(){
-  
   Serial.println(F("Saving file"));
-
-  File storedData = SPIFFS.open("test.json", "w"); // Open file
-  
+  File storedData = SPIFFS.open("test.json", "w+"); // Open file
   if(storedData){ // Check if file exists
-    
     Serial.println(F("File opened"));
     Serial.println(F("Write file"));
-    //Serial.println(tempJson);
     storedData.print(tempJson); // Write file
-    
   }else{
-    
     Serial.println(F("Failed to open file!"));
   }
-  
   Serial.println(F("Closing file"));
-  
   storedData.close(); // Close file
+}
+
+
+// Write json payload(string) to SPIFFS
+void writeUpdateTimeTo_SPIFFS(){
+  Serial.println(F("Saving file"));
+  File storedTime = SPIFFS.open("time.json", "w+"); // Open file
+  if(storedTime){ // Check if file exists
+    Serial.println(F("File opened"));
+    Serial.println(F("Write file"));
+    storedTime.print(updateTime); // Write file
+  }else{
+    Serial.println(F("Failed to open file!"));
+  }
+  Serial.println(F("Closing file"));
+  storedTime.close(); // Close file
 }
 
 /* __________________________________________________________________________________________________*/
@@ -876,35 +894,6 @@ void wifiSetup(){
 
 
 
-void loopOperation(){
-  
-  checkMode();
-  listFiles();
-  
-  if(connectionError == false){
-    
-    if(receiveImage == true){
-      downloadImageFrom_HTTP(host_url, path_url, "image.bmp", "image.bmp");
-      drawBitmaps_test();
-    }else{
-      display.refresh();
-      display.drawPaged(drawData, 0); // Draw/Load display in chunks
-      writeJsonTo_SPIFFS();
-    }
-    
-  }else if (connectionError == true){
-    
-    if(receiveImage == true){
-      drawBitmaps_test();
-    }else{
-      display.refresh();
-      display.drawPaged(drawTempData, 0); // Draw/Load display in chunks
-    }
-  }
-}
-
-
-
 void setup()
 {
   Serial.begin(115200);
@@ -918,7 +907,8 @@ void setup()
 
   wifiSetup();
   getJsonDataFrom_HTTP(jsonUrl);
-  loopOperation();
+  //loopOperation();
+  checkMode();
 
 
   delay(100);
