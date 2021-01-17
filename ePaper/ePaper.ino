@@ -22,10 +22,10 @@
 #include <Fonts/FreeMonoBold12pt7b.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
 #include <Fonts/RobotoMono_Regular5pt7b.h>
-#include <Fonts/DroidSansMono4pt7b.h>
+#include <Fonts/Cousine_Regular4pt7b.h>
 
 // Include template
-#include "new_template.h"
+#include "template.h"
 
 // Diplay libraries
 #include <GxEPD2.h>
@@ -41,8 +41,8 @@ void drawBitmapFromSpiffs(const char *filename, int16_t x, int16_t y, bool with_
 
 
 ESP8266WiFiMulti WiFiMulti;
-const char* ssid     = "Smart-Fridge";
-const char* password = "BusterKeel";
+const char* ssid     = "ssid";
+const char* password = "password";
 const char* host_url = "192.168.1.101";
 const char* path_url = "/serverData/image/";
 const char* jsonUrl = "http://192.168.1.101:150/serverData/schedule/";
@@ -400,7 +400,7 @@ void deepSleepCycle(uint32_t hours, bool end_of_setup = false) {
         RFMode wake_mode = WAKE_RF_DISABLED;
         if (reset_counter + 1 == hours) {
             // Wake up with radio on if the next power cycle finishes sleeping.
-            wake_mode = WAKE_RF_DEFAULT;
+            wake_mode = WAKE_RFCAL;
         }
         Serial.println("Going to deep-sleep for 1 hour.");
         // 1: WAKE_RFCAL
@@ -547,8 +547,8 @@ void drawJsonDataFromMemory(){
         display.drawRect(x, y, w, h, GxEPD_BLACK); // Draw border on display
         
         // Draw schedule data on display
-        display.setTextColor(GxEPD_BLACK, GxEPD_WHITE);
-        display.setFont(&DroidSansMono4pt7b);
+        display.setTextColor(GxEPD_BLACK);
+        display.setFont(&Cousine_Regular4pt7b);
         display.setCursor(x + 5, y + 8);
         display.println(repo0["data"][j-1]["subject"].as<char*>());
         //display.setCursor(x + 5, y + 18);
@@ -578,9 +578,9 @@ void drawJsonDataFromMemory(){
     display.setFont(&FreeMonoBold12pt7b);
 
     // Draw reason for closed room
-    display.setCursor(display.width()/6, display.height()/2);
+    display.setCursor(display.width()/10, display.height()/2);
     display.println(F("Dieser Raum ist momentan geschlossen!"));
-    display.setCursor((display.width()/6), (display.height()/2)+ 20);
+    display.setCursor((display.width()/10), (display.height()/2)+ 40);
     display.print("Grund: ");
     display.print(closedRoom["info"].as<char*>());
     
@@ -656,8 +656,8 @@ void compareAndDrawJsonData(){
 
           // Changes are drawn in red
           display.drawRect(x, y, w, h, GxEPD_RED); // Red border
-          display.setTextColor(GxEPD_RED, GxEPD_WHITE);
-          display.setFont(&DroidSansMono4pt7b);
+          display.setTextColor(GxEPD_RED);
+          display.setFont(&Cousine_Regular4pt7b);
           display.setCursor(x + 5, y + 8);
           display.println(repo1["data"][j-1]["subject"].as<char*>());
           //display.setCursor(x + 5, y + 18);
@@ -669,7 +669,7 @@ void compareAndDrawJsonData(){
           // Unchanged data is drawn in black
           display.drawRect(x, y, w, h, GxEPD_BLACK);  // Black border
           display.setTextColor(GxEPD_BLACK, GxEPD_WHITE);
-          display.setFont(&DroidSansMono4pt7b);
+          display.setFont(&Cousine_Regular4pt7b);
           display.setCursor(x + 5, y + 8);
           display.println(repo1["data"][j-1]["subject"].as<char*>());
           //display.setCursor(x + 5, y + 18);
@@ -691,9 +691,9 @@ void compareAndDrawJsonData(){
     display.setFont(&FreeMonoBold12pt7b);
 
     // Draw reason for closed room
-    display.setCursor(display.width()/6, display.height()/2);
+    display.setCursor(display.width()/10, display.height()/2);
     display.println(F("Dieser Raum ist momentan geschlossen!"));
-    display.setCursor((display.width()/6), (display.height()/2)+ 20);
+    display.setCursor((display.width()/10), (display.height()/2)+ 40);
     display.print("Grund: ");
     display.print(closedRoom["info"].as<char*>());
     
@@ -911,7 +911,7 @@ void setup()
   Serial.setTimeout(2000);
   display.init(115200);
 
-  deepSleepCycle(5);
+  deepSleepCycle(2);
 
   SPIFFS.begin();
   Serial.println("SPIFFS started");
@@ -922,7 +922,7 @@ void setup()
 
 
   delay(100);
-  deepSleepCycle(5,true);
+  deepSleepCycle(2,true);
   
 }
 
