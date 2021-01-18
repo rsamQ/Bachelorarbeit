@@ -409,7 +409,7 @@ void deepSleepCycle(uint32_t hours, bool end_of_setup = false) {
         delay(1000);
 #endif
 
-        ESP.deepSleep(30*1e6, wake_mode);
+        ESP.deepSleep(3600*1e6, wake_mode);
     }
     reset_counter = 0;
     ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
@@ -504,7 +504,7 @@ void drawJsonDataFromMemory(){
   int16_t heightPerDuration = 7;
   int16_t startingHour = 8;
 
-  File storedData = SPIFFS.open("test.json", "r");  // Open file
+  File storedData = SPIFFS.open("data.json", "r");  // Open file
   File storedTime = SPIFFS.open("time.json", "r");  // Open file
 
   // Stored json data
@@ -556,6 +556,7 @@ void drawJsonDataFromMemory(){
       }
     }    
   }
+  storedTime.close(); // Close file
   storedData.close(); // Close file
 }
 
@@ -563,7 +564,7 @@ void drawClosedRoom(){
 
   if(connectionError == true){
 
-    File storedData = SPIFFS.open("test.json", "r");  // Open file
+    File storedData = SPIFFS.open("data.json", "r");  // Open file
   
     // Stored json data
     DynamicJsonDocument storedDoc(MAXIMUM_CAPACITY);
@@ -587,7 +588,6 @@ void drawClosedRoom(){
     display.setCursor(335, 374);
     display.println(errorMsg);  // Error Message
 
-    storedTime.close();
     storedData.close();
   }else{
 
@@ -624,13 +624,13 @@ void compareAndDrawJsonData(){
   int16_t heightPerDuration = 7;
   int16_t startingHour = 8;
 
-  File storedData = SPIFFS.open("test.json", "r");  // Open fiile
+  File storedData = SPIFFS.open("data.json", "r");  // Open fiile
 
   // Write file if it does not exist
   if(!storedData){
     storedData.close(); // Close file
     writeJsonTo_SPIFFS();
-    storedData = SPIFFS.open("test.json", "r");  // Open file
+    storedData = SPIFFS.open("data.json", "r");  // Open file
   }
 
   // Stored json data
@@ -699,6 +699,31 @@ void compareAndDrawJsonData(){
 }
 
 
+/*void lineBreak(String string, int16_t x, int16_t y){
+  int16_t x1, y1;
+  uint16_t w, h;
+  uint16_t stringSize = string.length();
+  uint16_t counter = 0;
+  String newString = "";
+  for(uint16_t i = 0; i < stringSize; i++){
+    newString += string.charAt(i);
+    display.getTextBounds(newString, 0, 0, &x1, &y1, &w, &h);
+    
+    if(w > 75){
+      counter++;
+    }else{
+      display.setCursor(x + 5, y + 18);
+      display.println(string);
+    }
+  }
+  display.setCursor(x + 5, y + 18);
+  Serial.println(string.substring(0, stringSize - counter));
+  display.println(string.substring(0, stringSize - counter)); // Stellt aus irgendwelchen Gründen den kompletten String dar
+  display.setCursor(x + 5, y + 26);
+  display.println(string.substring(stringSize - counter)); 
+}*/
+
+
 
 void lineBreak(String string, int16_t x, int16_t y){
 
@@ -706,7 +731,7 @@ void lineBreak(String string, int16_t x, int16_t y){
   uint16_t w, h;
   uint16_t stringSize = string.length();
   display.getTextBounds(string, 0, 0, &x1, &y1, &w, &h);
-  if(stringSize > 14){
+  if(stringSize > 16){  // Zeilenumbruch nach dem 15ten Zeichen
     display.setCursor(x + 5, y + 18);
     display.println(string.substring(0, 15)); 
     display.setCursor(x + 5, y + 26);
@@ -743,13 +768,13 @@ void checkMode(){
   
   if (connectionError == true){
     
-    File storedData = SPIFFS.open("test.json", "r");  // Open file
+    File storedData = SPIFFS.open("data.json", "r");  // Open file
 
      // Write file if it does not exist
     if(!storedData){
       storedData.close(); // Close file
       writeJsonTo_SPIFFS();
-      storedData = SPIFFS.open("test.json", "r");  // Open file
+      storedData = SPIFFS.open("data.json", "r");  // Open file
     } 
   
     deserializeJson(storedDoc, storedData);
@@ -835,7 +860,7 @@ void drawClosedSign(const void*){
 // Write json payload(string) to SPIFFS
 void writeJsonTo_SPIFFS(){
   Serial.println(F("Saving file"));
-  File storedData = SPIFFS.open("test.json", "w+"); // Open file
+  File storedData = SPIFFS.open("data.json", "w+"); // Open file
   if(storedData){ // Check if file exists
     Serial.println(F("File opened"));
     Serial.println(F("Write file"));
@@ -907,7 +932,6 @@ void setup()
 
   wifiSetup();
   getJsonDataFrom_HTTP(jsonUrl);
-  //loopOperation();
   checkMode();
 
 

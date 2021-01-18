@@ -2,38 +2,24 @@
     {
         "day": 0,
         "data":[
-            {
-                "hour":8,
-                "minutes":0,
-                "duration":45,
-                "subject":"one1",
-                "professor":"Lano"
-            },
-            {
-                "hour":9,
-                "minutes":0,
-                "duration":90,
-                "subject":"one2",
-                "professor":"Lano"
-            }
         ]
     },
     {
         "day": 1,
         "data":[
             {
+                "hour":9,
+                "minutes":45,
+                "duration":90,
+                "subject":"mTE/B:SU",
+                "professor":"Schedel Thomas"
+            },
+            {
                 "hour":11,
                 "minutes":30,
                 "duration":90,
-                "subject":"two1",
-                "professor":"Lano"
-            },
-            {
-                "hour":14,
-                "minutes":0,
-                "duration":90,
-                "subject":"two2",
-                "professor":"Lano"
+                "subject":"mTE/B:SU",
+                "professor":"Roth Matthias"
             }
         ]
     },
@@ -41,18 +27,25 @@
         "day": 2,
         "data":[
             {
-                "hour":9,
+                "hour":8,
                 "minutes":0,
                 "duration":90,
-                "subject":"three1",
-                "professor":"Lano"
+                "subject":"Q:SU",
+                "professor":"Lano Ralph"
+            },
+            {
+                "hour":9,
+                "minutes":45,
+                "duration":90,
+                "subject":"IST:SU",
+                "professor":"Carl Holger"
             },
             {
                 "hour":11,
                 "minutes":30,
                 "duration":90,
-                "subject":"three2",
-                "professor":"Lano"
+                "subject":"MKZ:SU",
+                "professor":"Mehl Walter"
             }
         ]
     },
@@ -63,8 +56,8 @@
                 "hour":14,
                 "minutes":0,
                 "duration":90,
-                "subject":"four1",
-                "professor":"Lano"
+                "subject":"IST:SU",
+                "professor":"Carl Holger"
             }
         ]
     },
@@ -74,46 +67,32 @@
             {
                 "hour":8,
                 "minutes":0,
-                "duration":90,
-                "subject":"five1",
-                "professor":"Lano"
+                "duration":180,
+                "subject":"mPO2:Pr",
+                "professor":"Fietta Horst"
             },
             {
-                "hour":9,
-                "minutes":45,
+                "hour":14,
+                "minutes":0,
                 "duration":90,
-                "subject":"five2",
-                "professor":"Lano"
+                "subject":"mPO2:SU",
+                "professor":"Fietta Horst"
             }
         ]
     },
     {
         "day": 5,
         "data":[
-            {
-                "hour":8,
-                "minutes":0,
-                "duration":90,
-                "subject":"six1",
-                "professor":"Lano"
-            },
-            {
-                "hour":9,
-                "minutes":45,
-                "duration":90,
-                "subject":"six2",
-                "professor":"Lano"
-            }
         ]
     },
     {
-        "mode": 0
+        "mode": 2
     },
     {
         "room": "BB.210"
     },
     {
-        "info": ""
+        "info": "Corona"
     }
 ]
     
