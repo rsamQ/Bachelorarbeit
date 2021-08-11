@@ -41,11 +41,11 @@ void drawBitmapFromSpiffs(const char *filename, int16_t x, int16_t y, bool with_
 
 
 ESP8266WiFiMulti WiFiMulti;
-const char* ssid     = "ssid";
-const char* password = "password";
+const char* ssid     = "Smart-Fridge";
+const char* password = "BusterKeel";
 const char* host_url = "192.168.1.101";
-const char* path_url = "/serverData/image/";
-const char* jsonUrl = "http://192.168.1.101:150/serverData/schedule/";
+const char* path_url = "/serverData/website/image/";
+const char* jsonUrl = "http://192.168.1.101:150/serverData/website/schedule/";
 const int httpPort = 150;
 
 // Response Header Parameters
@@ -409,7 +409,7 @@ void deepSleepCycle(uint32_t hours, bool end_of_setup = false) {
         delay(1000);
 #endif
 
-        ESP.deepSleep(3600*1e6, wake_mode);
+        ESP.deepSleep(15*1e6, wake_mode);
     }
     reset_counter = 0;
     ESP.rtcUserMemoryWrite(0, &reset_counter, sizeof(reset_counter));
@@ -541,8 +541,8 @@ void drawJsonDataFromMemory(){
       
       // Draw schedule data on display
       display.setTextColor(GxEPD_BLACK);
-      display.setFont(&Cousine_Regular4pt7b);
-      display.setCursor(x + 5, y + 8);
+      display.setFont(&Cousine_Regular_5);
+      display.setCursor(x + 5, y + 10);
       display.println(repo0["data"][j-1]["subject"].as<char*>());
       lineBreak(repo0["data"][j-1]["professor"], x, y);
 
@@ -678,8 +678,8 @@ void compareAndDrawJsonData(){
           // Changes are drawn in red
           display.drawRect(x, y, w, h, GxEPD_RED); // Red border
           display.setTextColor(GxEPD_RED);
-          display.setFont(&Cousine_Regular4pt7b);
-          display.setCursor(x + 5, y + 8);
+          display.setFont(&Cousine_Regular_5);
+          display.setCursor(x + 5, y + 10);
           display.println(repo1["data"][j-1]["subject"].as<char*>());
           lineBreak(repo1["data"][j-1]["professor"], x, y);
           
@@ -688,8 +688,8 @@ void compareAndDrawJsonData(){
           // Unchanged data is drawn in black
           display.drawRect(x, y, w, h, GxEPD_BLACK);  // Black border
           display.setTextColor(GxEPD_BLACK, GxEPD_WHITE);
-          display.setFont(&Cousine_Regular4pt7b);
-          display.setCursor(x + 5, y + 8);
+          display.setFont(&Cousine_Regular_5);
+          display.setCursor(x + 5, y + 10);
           display.println(repo1["data"][j-1]["subject"].as<char*>());
           lineBreak(repo1["data"][j-1]["professor"], x, y);
         }
@@ -731,13 +731,13 @@ void lineBreak(String string, int16_t x, int16_t y){
   uint16_t w, h;
   uint16_t stringSize = string.length();
   display.getTextBounds(string, 0, 0, &x1, &y1, &w, &h);
-  if(stringSize > 16){  // Zeilenumbruch nach dem 15ten Zeichen
-    display.setCursor(x + 5, y + 18);
-    display.println(string.substring(0, 15)); 
-    display.setCursor(x + 5, y + 26);
-    display.println(string.substring(15)); 
+  if(stringSize > 13){  // Zeilenumbruch nach dem 15ten Zeichen
+    display.setCursor(x + 5, y + 22);
+    display.println(string.substring(0, 12)); 
+    display.setCursor(x + 5, y + 30);
+    display.println(string.substring(12)); 
   }else{
-    display.setCursor(x + 5, y + 18);
+    display.setCursor(x + 5, y + 22);
     display.println(string);
   }
 }
